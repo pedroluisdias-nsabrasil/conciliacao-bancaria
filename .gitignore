@@ -1,0 +1,37 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dados sensíveis
+dados/
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# Configuração local
+.env
+config/local.yaml
+
+# Relatórios gerados
+*.xlsx
+*.pdf
+
+# Temporários
+.DS_Store
+Thumbs.db
+*.bak
