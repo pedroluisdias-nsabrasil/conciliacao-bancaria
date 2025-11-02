@@ -6,6 +6,7 @@ comprovantes) e convertê-los em objetos do domínio.
 """
 
 from .leitor_csv import LeitorCSV
+from .leitor_pdf import LeitorPDF
 from .normalizadores import (
     normalizar_data,
     normalizar_valor,
@@ -15,6 +16,7 @@ from .normalizadores import (
 
 __all__ = [
     "LeitorCSV",
+    "LeitorPDF",
     "normalizar_data",
     "normalizar_valor", 
     "limpar_descricao",
