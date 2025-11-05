@@ -19,18 +19,18 @@ from .normalizadores import (
     normalizar_valor,
     limpar_descricao,
     identificar_tipo_lancamento,
-    detectar_encoding
+    detectar_encoding,
 )
 
 __all__ = [
-    'LeitorCSV',
-    'LeitorPDF',
-    'LeitorOCR',
-    'Preprocessador',
-    'preprocessar_para_ocr',
-    'normalizar_data',
-    'normalizar_valor',
-    'limpar_descricao',
-    'identificar_tipo_lancamento',
-    'detectar_encoding',
+    "LeitorCSV",
+    "LeitorPDF",
+    "LeitorOCR",
+    "Preprocessador",
+    "preprocessar_para_ocr",
+    "normalizar_data",
+    "normalizar_valor",
+    "limpar_descricao",
+    "identificar_tipo_lancamento",
+    "detectar_encoding",
 ]

@@ -7,6 +7,5 @@ sem necessidade de comprovante físico.
 """
 
 from src.regras.parser import ParserRegras
-from src.regras.engine import EngineRegras
 
-__all__ = ["ParserRegras", "EngineRegras"]
+__all__ = ["ParserRegras"]

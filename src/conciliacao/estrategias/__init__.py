@@ -25,9 +25,7 @@ from .base import (
     ConfiancaInvalidaError,
 )
 
-from .exato import (
-    EstrategiaExato
-)
+from .exato import EstrategiaExato
 
 # Versão do pacote de estratégias
 __version__ = "1.0.0"
@@ -37,11 +35,9 @@ __all__ = [
     # Classe base
     "EstrategiaBase",
     "EstrategiaExato",
-    
     # Funções auxiliares
     "criar_match_com_confianca",
     "validar_confianca",
-    
     # Exceções
     "EstrategiaError",
     "MatchInvalidoError",
@@ -52,10 +48,10 @@ __all__ = [
 def listar_estrategias():
     """
     Lista todas as estratégias disponíveis.
-    
+
     Returns:
         dict: Dicionário com nome e classe de cada estratégia
-        
+
     Examples:
         >>> estrategias = listar_estrategias()
         >>> for nome, classe in estrategias.items():

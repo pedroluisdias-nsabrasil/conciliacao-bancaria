@@ -24,6 +24,7 @@ import io
 
 # Imports do sistema - CORRIGIDO
 import sys
+
 # Adicionar o diretório raiz do projeto ao path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -37,6 +38,7 @@ from src.relatorios.gerador_pdf import GeradorPDF
 # FIXTURES - Dados de Teste
 # ============================================================================
 
+
 @pytest.fixture
 def lancamentos_teste() -> List[Lancamento]:
     """Cria lista de lançamentos para testes."""
@@ -46,21 +48,21 @@ def lancamentos_teste() -> List[Lancamento]:
             valor=Decimal("150.00"),
             descricao="Pagamento Fornecedor A",
             tipo="D",
-            saldo=Decimal("5000.00")
+            saldo=Decimal("5000.00"),
         ),
         Lancamento(
             data=date(2025, 11, 2),
             valor=Decimal("75.50"),
             descricao="Tarifa Bancária",
             tipo="D",
-            saldo=Decimal("4924.50")
+            saldo=Decimal("4924.50"),
         ),
         Lancamento(
             data=date(2025, 11, 3),
             valor=Decimal("200.00"),
             descricao="Depósito Cliente",
             tipo="C",
-            saldo=Decimal("5124.50")
+            saldo=Decimal("5124.50"),
         ),
     ]
 
@@ -75,7 +77,7 @@ def comprovantes_teste() -> List[Comprovante]:
             valor=Decimal("150.00"),
             beneficiario="Fornecedor A LTDA",
             tipo_documento="PIX",
-            confianca_ocr=0.95
+            confianca_ocr=0.95,
         ),
         Comprovante(
             arquivo="comprovante_002.pdf",
@@ -83,7 +85,7 @@ def comprovantes_teste() -> List[Comprovante]:
             valor=Decimal("200.00"),
             beneficiario="Cliente XYZ",
             tipo_documento="TED",
-            confianca_ocr=0.88
+            confianca_ocr=0.88,
         ),
     ]
 
@@ -97,14 +99,14 @@ def matches_teste(lancamentos_teste, comprovantes_teste) -> List[Match]:
             comprovante=comprovantes_teste[0],
             confianca=0.95,
             metodo="exato",
-            observacoes="Match automático - valores e datas exatos"
+            observacoes="Match automático - valores e datas exatos",
         ),
         Match(
             lancamento=lancamentos_teste[2],
             comprovante=comprovantes_teste[1],
             confianca=0.88,
             metodo="exato",
-            observacoes="Match bom - pequena diferença de data"
+            observacoes="Match bom - pequena diferença de data",
         ),
     ]
 
@@ -113,14 +115,14 @@ def matches_teste(lancamentos_teste, comprovantes_teste) -> List[Match]:
 def estatisticas_teste() -> Dict:
     """Cria dicionário de estatísticas para testes."""
     return {
-        'total_lancamentos': 3,
-        'total_comprovantes': 2,
-        'conciliados': 2,
-        'nao_conciliados': 1,
-        'taxa_conciliacao': 66.67,
-        'valor_total_lancamentos': Decimal("425.50"),
-        'valor_conciliado': Decimal("350.00"),
-        'valor_nao_conciliado': Decimal("75.50"),
+        "total_lancamentos": 3,
+        "total_comprovantes": 2,
+        "conciliados": 2,
+        "nao_conciliados": 1,
+        "taxa_conciliacao": 66.67,
+        "valor_total_lancamentos": Decimal("425.50"),
+        "valor_conciliado": Decimal("350.00"),
+        "valor_nao_conciliado": Decimal("75.50"),
     }
 
 
@@ -133,7 +135,7 @@ def gerador() -> GeradorPDF:
 @pytest.fixture
 def arquivo_temp():
     """Cria arquivo temporário para testes."""
-    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as f:
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         caminho = f.name
     yield caminho
     # Cleanup
@@ -147,16 +149,13 @@ def arquivo_temp():
 # CATEGORIA 1: TESTES BÁSICOS (5 testes)
 # ============================================================================
 
+
 def test_criar_pdf_basico(
-    gerador,
-    matches_teste,
-    lancamentos_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, lancamentos_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa criação básica de PDF.
-    
+
     Verifica:
     - PDF é criado com sucesso
     - Arquivo existe no disco
@@ -164,15 +163,15 @@ def test_criar_pdf_basico(
     """
     # Arrange
     nao_conciliados = [lancamentos_teste[1]]  # Tarifa bancária
-    
+
     # Act
     resultado = gerador.gerar(
         matches=matches_teste,
         lancamentos_nao_conciliados=nao_conciliados,
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     assert resultado == arquivo_temp
     assert os.path.exists(arquivo_temp)
@@ -180,15 +179,11 @@ def test_criar_pdf_basico(
 
 
 def test_pdf_arquivo_valido(
-    gerador,
-    matches_teste,
-    lancamentos_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, lancamentos_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa se o PDF gerado é um arquivo PDF válido.
-    
+
     Verifica:
     - Pode ser aberto pelo PyPDF2
     - Tem pelo menos 1 página
@@ -196,15 +191,15 @@ def test_pdf_arquivo_valido(
     """
     # Arrange
     nao_conciliados = [lancamentos_teste[1]]
-    
+
     # Act
     gerador.gerar(
         matches=matches_teste,
         lancamentos_nao_conciliados=nao_conciliados,
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     assert len(reader.pages) >= 1
@@ -212,30 +207,26 @@ def test_pdf_arquivo_valido(
 
 
 def test_pdf_tamanho_minimo(
-    gerador,
-    matches_teste,
-    lancamentos_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, lancamentos_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa se o PDF tem tamanho mínimo razoável.
-    
+
     Verifica:
     - PDF não está vazio
     - Tamanho > 10 KB (contém conteúdo)
     """
     # Arrange
     nao_conciliados = [lancamentos_teste[1]]
-    
+
     # Act
     gerador.gerar(
         matches=matches_teste,
         lancamentos_nao_conciliados=nao_conciliados,
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     tamanho = os.path.getsize(arquivo_temp)
     assert tamanho > 10_000  # > 10 KB
@@ -244,7 +235,7 @@ def test_pdf_tamanho_minimo(
 def test_criar_diretorios(gerador, matches_teste, estatisticas_teste):
     """
     Testa criação automática de diretórios.
-    
+
     Verifica:
     - Cria diretórios que não existem
     - Não falha se diretório já existe
@@ -253,29 +244,30 @@ def test_criar_diretorios(gerador, matches_teste, estatisticas_teste):
     dir_teste = tempfile.mkdtemp()
     subdir = os.path.join(dir_teste, "relatorios", "pdf")
     arquivo = os.path.join(subdir, "teste.pdf")
-    
+
     # Act
     try:
         gerador.gerar(
             matches=matches_teste,
             lancamentos_nao_conciliados=[],
             estatisticas=estatisticas_teste,
-            arquivo_saida=arquivo
+            arquivo_saida=arquivo,
         )
-        
+
         # Assert
         assert os.path.exists(subdir)
         assert os.path.exists(arquivo)
     finally:
         # Cleanup
         import shutil
+
         shutil.rmtree(dir_teste, ignore_errors=True)
 
 
 def test_erro_dados_vazios(gerador, arquivo_temp):
     """
     Testa comportamento com dados vazios.
-    
+
     Verifica:
     - Gera PDF mesmo sem matches
     - Gera PDF mesmo sem não conciliados
@@ -283,24 +275,24 @@ def test_erro_dados_vazios(gerador, arquivo_temp):
     """
     # Arrange
     estatisticas_vazias = {
-        'total_lancamentos': 0,
-        'total_comprovantes': 0,
-        'conciliados': 0,
-        'nao_conciliados': 0,
-        'taxa_conciliacao': 0.0,
-        'valor_total_lancamentos': Decimal("0.00"),
-        'valor_conciliado': Decimal("0.00"),
-        'valor_nao_conciliado': Decimal("0.00"),
+        "total_lancamentos": 0,
+        "total_comprovantes": 0,
+        "conciliados": 0,
+        "nao_conciliados": 0,
+        "taxa_conciliacao": 0.0,
+        "valor_total_lancamentos": Decimal("0.00"),
+        "valor_conciliado": Decimal("0.00"),
+        "valor_nao_conciliado": Decimal("0.00"),
     }
-    
+
     # Act
     resultado = gerador.gerar(
         matches=[],
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_vazias,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     assert os.path.exists(resultado)
     reader = PdfReader(resultado)
@@ -311,15 +303,11 @@ def test_erro_dados_vazios(gerador, arquivo_temp):
 # CATEGORIA 2: TESTES DE ESTRUTURA (5 testes)
 # ============================================================================
 
-def test_pdf_tem_cabecalho(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
-):
+
+def test_pdf_tem_cabecalho(gerador, matches_teste, estatisticas_teste, arquivo_temp):
     """
     Testa presença de cabeçalho no PDF.
-    
+
     Verifica:
     - Título do relatório presente
     - Data de geração presente
@@ -329,27 +317,22 @@ def test_pdf_tem_cabecalho(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     primeira_pagina = reader.pages[0]
     texto = primeira_pagina.extract_text()
-    
+
     assert "RELATÓRIO" in texto.upper() or "RELATORIO" in texto.upper()
     assert "2025" in texto  # Ano da data de geração
 
 
-def test_pdf_tem_resumo(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
-):
+def test_pdf_tem_resumo(gerador, matches_teste, estatisticas_teste, arquivo_temp):
     """
     Testa presença de resumo executivo.
-    
+
     Verifica:
     - Seção de resumo existe
     - KPIs principais presentes
@@ -359,29 +342,24 @@ def test_pdf_tem_resumo(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     texto_completo = ""
     for pagina in reader.pages:
         texto_completo += pagina.extract_text()
-    
+
     # Verificar presença de métricas chave
     assert "RESUMO" in texto_completo.upper() or "EXECUTIVO" in texto_completo.upper()
     assert "66" in texto_completo or "67" in texto_completo  # Taxa de conciliação
 
 
-def test_pdf_tem_rodape(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
-):
+def test_pdf_tem_rodape(gerador, matches_teste, estatisticas_teste, arquivo_temp):
     """
     Testa presença de rodapé nas páginas.
-    
+
     Verifica:
     - Rodapé existe
     - Contém informação de geração ou página
@@ -391,9 +369,9 @@ def test_pdf_tem_rodape(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     # Verificar que o PDF foi gerado (rodapé é parte da estrutura)
@@ -401,15 +379,11 @@ def test_pdf_tem_rodape(
 
 
 def test_pdf_tem_paginacao(
-    gerador,
-    matches_teste,
-    lancamentos_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, lancamentos_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa sistema de paginação.
-    
+
     Verifica:
     - PDF tem pelo menos 1 página
     - Múltiplas páginas se conteúdo grande
@@ -418,29 +392,26 @@ def test_pdf_tem_paginacao(
     # Criar muitos matches para forçar múltiplas páginas
     matches_grandes = matches_teste * 20  # 40 matches
     nao_conciliados = lancamentos_teste * 10  # 30 não conciliados
-    
+
     # Act
     gerador.gerar(
         matches=matches_grandes,
         lancamentos_nao_conciliados=nao_conciliados,
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     assert len(reader.pages) >= 1
 
 
 def test_pdf_tamanho_pagina_a4(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa se o PDF usa tamanho A4.
-    
+
     Verifica:
     - Largura ~210mm (595 pontos)
     - Altura ~297mm (842 pontos)
@@ -450,18 +421,18 @@ def test_pdf_tamanho_pagina_a4(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     primeira_pagina = reader.pages[0]
-    
+
     # MediaBox do A4 em pontos (1 ponto = 1/72 polegada)
     # A4 = 210x297mm = 595x842 pontos
     largura = float(primeira_pagina.mediabox.width)
     altura = float(primeira_pagina.mediabox.height)
-    
+
     # Tolerância de ±5 pontos
     assert 590 <= largura <= 600
     assert 837 <= altura <= 847
@@ -471,15 +442,13 @@ def test_pdf_tamanho_pagina_a4(
 # CATEGORIA 3: TESTES DE CONTEÚDO (5 testes)
 # ============================================================================
 
+
 def test_grafico_pizza_presente(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa presença de gráfico de pizza.
-    
+
     Verifica:
     - Gráfico é inserido no PDF
     - PDF contém imagem (gráfico matplotlib)
@@ -489,9 +458,9 @@ def test_grafico_pizza_presente(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     # Verificar que o PDF tem conteúdo suficiente para incluir gráfico
@@ -500,14 +469,11 @@ def test_grafico_pizza_presente(
 
 
 def test_tabela_conciliados_formatada(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa formatação da tabela de conciliados.
-    
+
     Verifica:
     - Tabela contém dados dos matches
     - Valores presentes no texto
@@ -517,65 +483,58 @@ def test_tabela_conciliados_formatada(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     texto_completo = ""
     for pagina in reader.pages:
         texto_completo += pagina.extract_text()
-    
+
     # Verificar presença de dados dos matches
     assert "150" in texto_completo or "150.00" in texto_completo
     assert "200" in texto_completo or "200.00" in texto_completo
 
 
 def test_tabela_nao_conciliados_vermelha(
-    gerador,
-    matches_teste,
-    lancamentos_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, lancamentos_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa formatação da tabela de não conciliados.
-    
+
     Verifica:
     - Tabela contém não conciliados
     - Dados presentes no PDF
     """
     # Arrange
     nao_conciliados = [lancamentos_teste[1]]  # Tarifa bancária
-    
+
     # Act
     gerador.gerar(
         matches=matches_teste,
         lancamentos_nao_conciliados=nao_conciliados,
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     texto_completo = ""
     for pagina in reader.pages:
         texto_completo += pagina.extract_text()
-    
+
     # Verificar presença da tarifa bancária
     assert "75" in texto_completo or "75.50" in texto_completo
     assert "Tarifa" in texto_completo or "TARIFA" in texto_completo
 
 
 def test_valores_formatados_reais(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa formatação de valores em Reais.
-    
+
     Verifica:
     - Valores com 2 casas decimais
     - Símbolo ou formato R$
@@ -585,32 +544,30 @@ def test_valores_formatados_reais(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     texto_completo = ""
     for pagina in reader.pages:
         texto_completo += pagina.extract_text()
-    
+
     # Verificar formato monetário (valores com .00 ou ,00)
     import re
+
     # Padrão: número com 2 casas decimais
-    padrao_moeda = r'\d+[.,]\d{2}'
+    padrao_moeda = r"\d+[.,]\d{2}"
     matches_moeda = re.findall(padrao_moeda, texto_completo)
     assert len(matches_moeda) >= 2  # Pelo menos 2 valores formatados
 
 
 def test_datas_formatadas_ddmmyyyy(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa formatação de datas.
-    
+
     Verifica:
     - Datas presentes no PDF
     - Formato legível (dd/mm/yyyy)
@@ -620,20 +577,21 @@ def test_datas_formatadas_ddmmyyyy(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     texto_completo = ""
     for pagina in reader.pages:
         texto_completo += pagina.extract_text()
-    
+
     # Verificar presença de datas (2025 ou formato dd/mm)
     assert "2025" in texto_completo
     import re
+
     # Padrão: dd/mm/yyyy ou dd-mm-yyyy
-    padrao_data = r'\d{1,2}[/-]\d{1,2}[/-]\d{4}'
+    padrao_data = r"\d{1,2}[/-]\d{1,2}[/-]\d{4}"
     matches_data = re.findall(padrao_data, texto_completo)
     # Deve ter pelo menos 1 data (data de geração ou datas dos lançamentos)
     assert len(matches_data) >= 1
@@ -643,15 +601,13 @@ def test_datas_formatadas_ddmmyyyy(
 # CATEGORIA 4: TESTES DE FORMATAÇÃO (5 testes)
 # ============================================================================
 
+
 def test_cores_semanticas_aplicadas(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa aplicação de cores semânticas.
-    
+
     Verifica:
     - PDF contém elementos coloridos
     - Estrutura permite cores (não é preto e branco puro)
@@ -663,18 +619,18 @@ def test_cores_semanticas_aplicadas(
         comprovante=matches_teste[0].comprovante,
         confianca=0.70,  # Confiança média → amarelo
         metodo="fuzzy",
-        observacoes="Match duvidoso"
+        observacoes="Match duvidoso",
     )
     matches_mistos = [matches_teste[0], match_baixo]
-    
+
     # Act
     gerador.gerar(
         matches=matches_mistos,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     assert os.path.exists(arquivo_temp)
     # Cores aumentam o tamanho do arquivo
@@ -682,15 +638,11 @@ def test_cores_semanticas_aplicadas(
 
 
 def test_zebra_striping_tabelas(
-    gerador,
-    matches_teste,
-    lancamentos_teste,
-    estatisticas_teste,
-    arquivo_temp
+    gerador, matches_teste, lancamentos_teste, estatisticas_teste, arquivo_temp
 ):
     """
     Testa zebra striping (linhas alternadas) nas tabelas.
-    
+
     Verifica:
     - Múltiplas linhas são criadas
     - PDF gerado com tabelas formatadas
@@ -698,34 +650,29 @@ def test_zebra_striping_tabelas(
     # Arrange
     # Criar múltiplos matches para tabela maior
     matches_grandes = matches_teste * 5  # 10 matches
-    
+
     # Act
     gerador.gerar(
         matches=matches_grandes,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     texto_completo = ""
     for pagina in reader.pages:
         texto_completo += pagina.extract_text()
-    
+
     # Verificar que múltiplos matches estão presentes
     assert texto_completo.count("150") >= 5  # Valor repetido
 
 
-def test_margens_corretas(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
-):
+def test_margens_corretas(gerador, matches_teste, estatisticas_teste, arquivo_temp):
     """
     Testa margens do documento.
-    
+
     Verifica:
     - Margens configuradas (2.5cm padrão)
     - Conteúdo não ultrapassa margens
@@ -735,9 +682,9 @@ def test_margens_corretas(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     # Verificar que o PDF foi criado com estrutura adequada
@@ -747,15 +694,10 @@ def test_margens_corretas(
     assert len(primeira_pagina.extract_text()) > 100
 
 
-def test_fontes_profissionais(
-    gerador,
-    matches_teste,
-    estatisticas_teste,
-    arquivo_temp
-):
+def test_fontes_profissionais(gerador, matches_teste, estatisticas_teste, arquivo_temp):
     """
     Testa uso de fontes profissionais.
-    
+
     Verifica:
     - Fontes padrão do reportlab (Helvetica)
     - Texto é legível e extraível
@@ -765,14 +707,14 @@ def test_fontes_profissionais(
         matches=matches_teste,
         lancamentos_nao_conciliados=[],
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     reader = PdfReader(arquivo_temp)
     primeira_pagina = reader.pages[0]
     texto = primeira_pagina.extract_text()
-    
+
     # Verificar que texto é extraível (fontes corretas)
     assert len(texto) > 100
     assert texto.isprintable() or any(c.isalpha() for c in texto)
@@ -784,11 +726,11 @@ def test_integracao_completa(
     lancamentos_teste,
     comprovantes_teste,
     estatisticas_teste,
-    arquivo_temp
+    arquivo_temp,
 ):
     """
     Teste de integração completo.
-    
+
     Verifica:
     - Todos os componentes funcionam juntos
     - PDF completo com todos os elementos
@@ -796,33 +738,35 @@ def test_integracao_completa(
     """
     # Arrange
     nao_conciliados = [lancamentos_teste[1]]
-    
+
     # Act
     resultado = gerador.gerar(
         matches=matches_teste,
         lancamentos_nao_conciliados=nao_conciliados,
         estatisticas=estatisticas_teste,
-        arquivo_saida=arquivo_temp
+        arquivo_saida=arquivo_temp,
     )
-    
+
     # Assert
     assert resultado == arquivo_temp
     assert os.path.exists(resultado)
-    
+
     # Verificações de qualidade
     reader = PdfReader(resultado)
     assert len(reader.pages) >= 1
     assert os.path.getsize(resultado) > 15_000  # Arquivo completo
-    
+
     # Verificar conteúdo
     texto_completo = ""
     for pagina in reader.pages:
         texto_completo += pagina.extract_text()
-    
+
     # Elementos essenciais presentes
-    assert "RELATÓRIO" in texto_completo.upper() or "RELATORIO" in texto_completo.upper()
+    assert (
+        "RELATÓRIO" in texto_completo.upper() or "RELATORIO" in texto_completo.upper()
+    )
     assert "150" in texto_completo  # Valor do match
-    assert "75" in texto_completo   # Valor não conciliado
+    assert "75" in texto_completo  # Valor não conciliado
     assert "2025" in texto_completo  # Data
 
 

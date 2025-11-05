@@ -50,18 +50,14 @@ __version__ = "1.0.0"
 __all__ = [
     # Subpacotes
     "estrategias",
-    
     # Classes base
     "EstrategiaBase",
-    
     # Motor (a implementar)
     # "MotorConciliacao",
     # "ConfiguracaoConciliacao",
-    
     # Funções auxiliares
     "criar_match_com_confianca",
     "validar_confianca",
-    
     # Exceções
     "EstrategiaError",
     "MatchInvalidoError",
@@ -83,7 +79,7 @@ PACKAGE_INFO = {
 def info():
     """
     Exibe informações sobre o pacote de conciliação.
-    
+
     Examples:
         >>> from src.conciliacao import info
         >>> info()
@@ -117,10 +113,10 @@ CONFIG_PADRAO = {
 def obter_config_padrao():
     """
     Retorna configuração padrão do sistema.
-    
+
     Returns:
         dict: Configurações padrão
-        
+
     Examples:
         >>> config = obter_config_padrao()
         >>> print(config['tolerancia_dias'])
@@ -131,5 +127,6 @@ def obter_config_padrao():
 
 # Log de inicialização
 import logging
+
 logger = logging.getLogger(__name__)
 logger.info(f"Pacote conciliacao v{__version__} carregado")

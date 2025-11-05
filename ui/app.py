@@ -87,6 +87,7 @@ def render_sidebar():
         st.page_link("pages/1_📤_Upload.py", label="Upload de Arquivos", icon="📤")
         st.page_link("pages/2_🔄_Conciliar.py", label="Executar Conciliação", icon="🔄")
         st.page_link("pages/3_📊_Resultados.py", label="Ver Resultados", icon="📊")
+        st.page_link("pages/5_📋_Regras.py", label="📋 Regras de Auto-Conciliação")
         
         st.markdown("---")
         

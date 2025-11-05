@@ -11,28 +11,30 @@ Date: 02/11/2025
 """
 
 from .lancamento import Lancamento, LancamentoError, LancamentoInvalidoError
-from .comprovante import Comprovante, ComprovanteError, ComprovanteInvalidoError, OCRError
+from .comprovante import (
+    Comprovante,
+    ComprovanteError,
+    ComprovanteInvalidoError,
+    OCRError,
+)
 from .match import Match, MatchError, MatchInvalidoError, MatchConflitanteError
 
-__version__ = '1.0.0'
+__version__ = "1.0.0"
 
 __all__ = [
     # Modelos principais
-    'Lancamento',
-    'Comprovante',
-    'Match',
-    
+    "Lancamento",
+    "Comprovante",
+    "Match",
     # Exceções de Lancamento
-    'LancamentoError',
-    'LancamentoInvalidoError',
-    
+    "LancamentoError",
+    "LancamentoInvalidoError",
     # Exceções de Comprovante
-    'ComprovanteError',
-    'ComprovanteInvalidoError',
-    'OCRError',
-    
+    "ComprovanteError",
+    "ComprovanteInvalidoError",
+    "OCRError",
     # Exceções de Match
-    'MatchError',
-    'MatchInvalidoError',
-    'MatchConflitanteError',
+    "MatchError",
+    "MatchInvalidoError",
+    "MatchConflitanteError",
 ]

@@ -1,0 +1,276 @@
+# Regras de Auto-Conciliação Bancária
+# Sistema de Conciliação Bancária - Sprint 6
+# 
+# Este arquivo contém regras para auto-conciliar lançamentos bancários
+# comuns que não possuem comprovante físico.
+
+regras:
+  # ============================================
+  # TARIFAS BANCÁRIAS
+  # ============================================
+  
+  - id: tarifa_doc_ted
+    nome: "Tarifa DOC/TED"
+    descricao: "Auto-conciliar tarifas de transferências DOC e TED"
+    ativo: true
+    prioridade: 10
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)TARIFA\\s+(DOC|TED)"
+      
+      - campo: valor
+        operador: between
+        valor: [0.01, 100.00]
+      
+      - campo: tipo
+        operador: equals
+        valor: "D"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.95
+      observacao: "Tarifa bancária DOC/TED - Auto-conciliada por regra"
+      categoria: "Despesa Bancária"
+
+  - id: tarifa_pix
+    nome: "Tarifa PIX"
+    descricao: "Auto-conciliar tarifas de PIX (quando cobradas)"
+    ativo: true
+    prioridade: 10
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)TARIFA\\s+PIX|PIX.*TARIFA"
+      
+      - campo: valor
+        operador: between
+        valor: [0.01, 50.00]
+      
+      - campo: tipo
+        operador: equals
+        valor: "D"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.95
+      observacao: "Tarifa PIX - Auto-conciliada por regra"
+      categoria: "Despesa Bancária"
+
+  - id: tarifa_boleto
+    nome: "Tarifa Boleto"
+    descricao: "Auto-conciliar tarifas de emissão de boleto"
+    ativo: true
+    prioridade: 10
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)TARIFA.*BOLETO|BOLETO.*TARIFA"
+      
+      - campo: valor
+        operador: between
+        valor: [0.01, 30.00]
+      
+      - campo: tipo
+        operador: equals
+        valor: "D"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.90
+      observacao: "Tarifa de boleto - Auto-conciliada por regra"
+      categoria: "Despesa Bancária"
+
+  - id: tarifa_manutencao_conta
+    nome: "Tarifa Manutenção Conta"
+    descricao: "Auto-conciliar tarifa mensal de manutenção de conta"
+    ativo: true
+    prioridade: 9
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)MANUT.*CONTA|PACOTE.*SERVICO|CESTA.*SERVICO"
+      
+      - campo: valor
+        operador: between
+        valor: [0.01, 200.00]
+      
+      - campo: tipo
+        operador: equals
+        valor: "D"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.92
+      observacao: "Tarifa de manutenção de conta - Auto-conciliada por regra"
+      categoria: "Despesa Bancária"
+
+  # ============================================
+  # IOF - IMPOSTO SOBRE OPERAÇÕES FINANCEIRAS
+  # ============================================
+  
+  - id: iof_cartao_credito
+    nome: "IOF Cartão de Crédito"
+    descricao: "Auto-conciliar IOF de operações com cartão de crédito"
+    ativo: true
+    prioridade: 8
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)IOF.*CARTAO|IOF.*CREDITO"
+      
+      - campo: valor
+        operador: greater_than
+        valor: 0.00
+      
+      - campo: tipo
+        operador: equals
+        valor: "D"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.90
+      observacao: "IOF de cartão de crédito - Auto-conciliado por regra"
+      categoria: "Imposto"
+
+  - id: iof_emprestimo
+    nome: "IOF Empréstimo"
+    descricao: "Auto-conciliar IOF de operações de empréstimo"
+    ativo: true
+    prioridade: 8
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)IOF.*EMPRESTIMO|IOF.*FINANC"
+      
+      - campo: valor
+        operador: greater_than
+        valor: 0.00
+      
+      - campo: tipo
+        operador: equals
+        valor: "D"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.88
+      observacao: "IOF de empréstimo - Auto-conciliado por regra"
+      categoria: "Imposto"
+
+  # ============================================
+  # JUROS E ENCARGOS
+  # ============================================
+  
+  - id: juros_cheque_especial
+    nome: "Juros Cheque Especial"
+    descricao: "Auto-conciliar juros de cheque especial"
+    ativo: true
+    prioridade: 7
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)JUROS.*CHEQUE\\s+ESPECIAL|CHEQUE\\s+ESPECIAL.*JUROS"
+      
+      - campo: valor
+        operador: greater_than
+        valor: 0.00
+      
+      - campo: tipo
+        operador: equals
+        valor: "D"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.85
+      observacao: "Juros de cheque especial - Auto-conciliado por regra"
+      categoria: "Encargo Financeiro"
+
+  - id: juros_mora
+    nome: "Juros de Mora"
+    descricao: "Auto-conciliar juros de mora e multas"
+    ativo: true
+    prioridade: 7
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)JUROS.*MORA|MULTA|ENCARGO"
+      
+      - campo: valor
+        operador: greater_than
+        valor: 0.00
+      
+      - campo: tipo
+        operador: equals
+        valor: "D"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.80
+      observacao: "Juros de mora/multa - Auto-conciliado por regra"
+      categoria: "Encargo Financeiro"
+
+  # ============================================
+  # RENDIMENTOS
+  # ============================================
+  
+  - id: rendimento_poupanca
+    nome: "Rendimento Poupança"
+    descricao: "Auto-conciliar rendimentos de poupança"
+    ativo: true
+    prioridade: 6
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)RENDIMENTO.*POUPANCA|POUPANCA.*RENDIMENTO"
+      
+      - campo: valor
+        operador: greater_than
+        valor: 0.00
+      
+      - campo: tipo
+        operador: equals
+        valor: "C"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.88
+      observacao: "Rendimento de poupança - Auto-conciliado por regra"
+      categoria: "Receita Financeira"
+
+  # ============================================
+  # ESTORNOS
+  # ============================================
+  
+  - id: estorno_tarifa
+    nome: "Estorno de Tarifa"
+    descricao: "Auto-conciliar estornos de tarifas bancárias"
+    ativo: true
+    prioridade: 5
+    
+    condicoes:
+      - campo: descricao
+        operador: regex
+        valor: "(?i)ESTORNO.*TARIFA|DEVOLUCAO.*TARIFA"
+      
+      - campo: valor
+        operador: greater_than
+        valor: 0.00
+      
+      - campo: tipo
+        operador: equals
+        valor: "C"
+    
+    acao:
+      tipo: auto_aprovar
+      confianca: 0.85
+      observacao: "Estorno de tarifa - Auto-conciliado por regra"
+      categoria: "Estorno"

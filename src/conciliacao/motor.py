@@ -31,9 +31,10 @@ import logging
 from typing import List, Dict, Optional, Set, Tuple
 from datetime import datetime
 from decimal import Decimal
-
 from src.modelos import Lancamento, Comprovante, Match
 from src.conciliacao.estrategias.base import EstrategiaBase
+from src.conciliacao.estrategias.regras import EstrategiaRegras
+from src.conciliacao.estrategias.exato import EstrategiaExato
 
 
 # Configuração de logging
@@ -47,16 +48,19 @@ logger = logging.getLogger(__name__)
 
 class MotorConciliacaoError(Exception):
     """Erro base do motor de conciliação."""
+
     pass
 
 
 class EstrategiaInvalidaError(MotorConciliacaoError):
     """Erro quando estratégia é inválida."""
+
     pass
 
 
 class ConciliacaoError(MotorConciliacaoError):
     """Erro durante processo de conciliação."""
+
     pass
 
 
@@ -68,181 +72,55 @@ class ConciliacaoError(MotorConciliacaoError):
 class MotorConciliacao:
     """
     Motor de conciliação bancária.
-    
+
     Responsável por orquestrar o processo de conciliação entre lançamentos
     bancários e comprovantes de pagamento, gerenciando múltiplas estratégias
     de matching e garantindo que cada comprovante seja usado apenas uma vez.
-    
+
     O motor aplica as estratégias em ordem de prioridade (menor valor primeiro)
     e para no primeiro match encontrado para cada lançamento.
-    
+
     Attributes:
         estrategias: Lista de estratégias de matching
         config: Configurações do motor
-        
+
     Example:
         >>> motor = MotorConciliacao()
         >>> motor.adicionar_estrategia(EstrategiaExato())
         >>> matches = motor.conciliar(lancamentos, comprovantes)
         >>> print(f"Taxa: {motor.calcular_taxa_conciliacao(matches, lancamentos):.1%}")
     """
-    
-    def __init__(
-        self,
-        config: Optional[Dict] = None
-    ):
+
+    def __init__(self):
         """
-        Inicializa o motor de conciliação.
-        
-        Args:
-            config: Configurações opcionais do motor. Se None, usa padrões.
-                   Opções disponíveis:
-                   - confianca_minima (float): Confiança mínima para match (0.60)
-                   - confianca_auto_aprovar (float): Auto-aprovar acima deste valor (0.90)
-                   - max_matches_por_lancamento (int): Máximo de matches por lançamento (5)
-                   - usar_cache (bool): Usar cache de matches (True)
-                   - log_level (str): Nível de log ("INFO")
-        
-        Raises:
-            ValueError: Se configurações inválidas
-            
-        Example:
-            >>> motor = MotorConciliacao()
-            >>> motor = MotorConciliacao({"confianca_minima": 0.70})
+        Inicializa motor de conciliação com estratégias padrão.
+
+        Estratégias são aplicadas em ordem de prioridade (maior primeiro):
+        - EstrategiaRegras (prioridade 20): Auto-conciliação de tarifas
+        - EstrategiaExato (prioridade 10): Matching exato com comprovantes
         """
-        self.estrategias: List[EstrategiaBase] = []
-        
-        # Configurações padrão
-        self.config = {
-            "confianca_minima": 0.60,
-            "confianca_auto_aprovar": 0.90,
-            "max_matches_por_lancamento": 5,
-            "usar_cache": True,
-            "log_level": "INFO",
-        }
-        
-        # Atualizar com configurações fornecidas
-        if config:
-            self._validar_config(config)
-            self.config.update(config)
-        
-        # Estatísticas
-        self._total_conciliacoes = 0
-        self._tempo_total = Decimal('0')
-        
-        logger.info(
-            "MotorConciliacao inicializado com "
-            f"{len(self.estrategias)} estratégias"
-        )
-    
-    def _validar_config(self, config: Dict) -> None:
-        """
-        Valida configurações fornecidas.
-        
-        Args:
-            config: Dicionário de configurações
-            
-        Raises:
-            ValueError: Se configurações inválidas
-        """
-        if "confianca_minima" in config:
-            if not 0.0 <= config["confianca_minima"] <= 1.0:
-                raise ValueError(
-                    "confianca_minima deve estar entre 0.0 e 1.0"
-                )
-        
-        if "confianca_auto_aprovar" in config:
-            if not 0.0 <= config["confianca_auto_aprovar"] <= 1.0:
-                raise ValueError(
-                    "confianca_auto_aprovar deve estar entre 0.0 e 1.0"
-                )
-        
-        if "max_matches_por_lancamento" in config:
-            if config["max_matches_por_lancamento"] < 1:
-                raise ValueError(
-                    "max_matches_por_lancamento deve ser >= 1"
-                )
-    
-    def adicionar_estrategia(self, estrategia: EstrategiaBase) -> None:
-        """
-        Adiciona uma estratégia ao motor e ordena por prioridade.
-        
-        Estratégias são aplicadas em ordem de prioridade (menor valor
-        primeiro). Por exemplo, EstrategiaExato (prioridade 10) é
-        aplicada antes de EstrategiaFuzzy (prioridade 50).
-        
-        Args:
-            estrategia: Instância de uma estratégia de matching
-            
-        Raises:
-            EstrategiaInvalidaError: Se estratégia inválida
-            
-        Example:
-            >>> motor.adicionar_estrategia(EstrategiaExato())
-            >>> motor.adicionar_estrategia(EstrategiaFuzzy())
-        """
-        if not isinstance(estrategia, EstrategiaBase):
-            raise EstrategiaInvalidaError(
-                f"Estratégia deve herdar de EstrategiaBase, "
-                f"recebido: {type(estrategia).__name__}"
-            )
-        
-        self.estrategias.append(estrategia)
-        self.estrategias.sort()  # Usa __lt__ de EstrategiaBase
-        
-        logger.info(
-            f"Estratégia adicionada: {estrategia.nome} "
-            f"(prioridade: {estrategia.prioridade})"
-        )
-        logger.debug(
-            f"Total de estratégias: {len(self.estrategias)} "
-            f"[{', '.join(e.nome for e in self.estrategias)}]"
-        )
-    
-    def remover_estrategia(self, nome: str) -> bool:
-        """
-        Remove uma estratégia pelo nome.
-        
-        Args:
-            nome: Nome da estratégia a remover
-            
-        Returns:
-            True se removida, False se não encontrada
-            
-        Example:
-            >>> motor.remover_estrategia("Estratégia Exato")
-            True
-        """
-        for i, estrategia in enumerate(self.estrategias):
-            if estrategia.nome == nome:
-                self.estrategias.pop(i)
-                logger.info(f"Estratégia removida: {nome}")
-                return True
-        
-        logger.warning(f"Estratégia não encontrada: {nome}")
-        return False
-    
-    def listar_estrategias(self) -> List[Dict[str, any]]:
-        """
-        Lista todas as estratégias cadastradas.
-        
-        Returns:
-            Lista de dicionários com informações das estratégias
-            
-        Example:
-            >>> estrategias = motor.listar_estrategias()
-            >>> for e in estrategias:
-            ...     print(f"{e['nome']}: prioridade {e['prioridade']}")
-        """
-        return [
-            {
-                "nome": e.nome,
-                "prioridade": e.prioridade,
-                "tipo": type(e).__name__,
-            }
-            for e in self.estrategias
+        # Inicializar estratégias em ordem de prioridade
+        self.estrategias = [
+            EstrategiaRegras(),  # Prioridade 20 (executa primeiro)
+            EstrategiaExato(),  # Prioridade 10 (executa depois)
         ]
-    
+
+        # Ordenar por prioridade decrescente
+        self.estrategias.sort(key=lambda e: e.prioridade, reverse=True)
+
+        # Configuração padrão
+        self.config = {
+            "tolerancia_dias": 3,
+            "tolerancia_valor": 0.50,
+            "confianca_minima": 0.60,
+        }
+
+        # Log de inicialização
+        logger.info(
+            f"Motor inicializado com {len(self.estrategias)} estratégias: "
+            f"{[e.nome for e in self.estrategias]}"
+        )
+
     def conciliar(
         self,
         lancamentos: List[Lancamento],
@@ -250,27 +128,27 @@ class MotorConciliacao:
     ) -> List[Match]:
         """
         Concilia lançamentos com comprovantes.
-        
+
         Este é o método principal do motor. Para cada lançamento:
         1. Itera pelas estratégias em ordem de prioridade
         2. Busca um match usando a estratégia
         3. Se encontrar, adiciona à lista e marca comprovante como usado
         4. Para no primeiro match (não tenta outras estratégias)
-        
+
         Comprovantes já usados não são considerados nas próximas iterações,
         garantindo que cada comprovante seja usado apenas uma vez.
-        
+
         Args:
             lancamentos: Lista de lançamentos bancários
             comprovantes: Lista de comprovantes de pagamento
-            
+
         Returns:
             Lista de matches encontrados (pode estar vazia)
-            
+
         Raises:
             ConciliacaoError: Se erro durante conciliação
             ValueError: Se listas vazias ou None
-            
+
         Example:
             >>> matches = motor.conciliar(lancamentos, comprovantes)
             >>> print(f"Encontrados {len(matches)} matches")
@@ -279,38 +157,33 @@ class MotorConciliacao:
         # Validações
         if not lancamentos:
             raise ValueError("Lista de lançamentos não pode ser vazia")
-        
+
         if not comprovantes:
             raise ValueError("Lista de comprovantes não pode ser vazia")
-        
+
         if not self.estrategias:
             raise ConciliacaoError(
                 "Nenhuma estratégia cadastrada. "
                 "Use adicionar_estrategia() antes de conciliar."
             )
-        
+
         logger.info(
             f"Iniciando conciliação: "
             f"{len(lancamentos)} lançamentos × "
             f"{len(comprovantes)} comprovantes"
         )
-        logger.debug(
-            f"Estratégias ativas: "
-            f"{[e.nome for e in self.estrategias]}"
-        )
-        
+        logger.debug(f"Estratégias ativas: " f"{[e.nome for e in self.estrategias]}")
+
         # Registro de tempo
         inicio = datetime.now()
-        
+
         # Estruturas de controle
         matches: List[Match] = []
         usados: Set[int] = set()  # IDs de comprovantes já usados
-        
+
         # Estatísticas por estratégia
-        stats_estrategias: Dict[str, int] = {
-            e.nome: 0 for e in self.estrategias
-        }
-        
+        stats_estrategias: Dict[str, int] = {e.nome: 0 for e in self.estrategias}
+
         try:
             # Para cada lançamento
             for idx_lanc, lancamento in enumerate(lancamentos, 1):
@@ -318,24 +191,22 @@ class MotorConciliacao:
                     f"Processando lançamento {idx_lanc}/{len(lancamentos)}: "
                     f"{lancamento.descricao} - R$ {lancamento.valor}"
                 )
-                
+
                 # Tentar cada estratégia em ordem de prioridade
                 match_encontrado = False
-                
+
                 for estrategia in self.estrategias:
                     logger.debug(
                         f"  Aplicando estratégia: {estrategia.nome} "
                         f"(prioridade {estrategia.prioridade})"
                     )
-                    
+
                     try:
                         # Buscar match com esta estratégia
                         match = estrategia.encontrar_match(
-                            lancamento,
-                            comprovantes,
-                            usados
+                            lancamento, comprovantes, usados
                         )
-                        
+
                         # Se encontrou match
                         if match:
                             # Verificar confiança mínima
@@ -344,7 +215,7 @@ class MotorConciliacao:
                                 usados.add(id(match.comprovante))
                                 stats_estrategias[estrategia.nome] += 1
                                 match_encontrado = True
-                                
+
                                 logger.info(
                                     f"  ✓ Match encontrado! "
                                     f"Estratégia: {estrategia.nome}, "
@@ -359,25 +230,21 @@ class MotorConciliacao:
                                     f"{self.config['confianca_minima']:.1%}), "
                                     f"ignorando"
                                 )
-                    
+
                     except Exception as e:
-                        logger.error(
-                            f"  ✗ Erro na estratégia {estrategia.nome}: {e}"
-                        )
+                        logger.error(f"  ✗ Erro na estratégia {estrategia.nome}: {e}")
                         # Continua com próxima estratégia
                         continue
-                
+
                 if not match_encontrado:
-                    logger.debug(
-                        f"  ✗ Nenhum match encontrado para este lançamento"
-                    )
-            
+                    logger.debug(f"  ✗ Nenhum match encontrado para este lançamento")
+
             # Calcular tempo total
             fim = datetime.now()
             tempo_decorrido = (fim - inicio).total_seconds()
             self._tempo_total += Decimal(str(tempo_decorrido))
             self._total_conciliacoes += 1
-            
+
             # Log de resumo
             logger.info(
                 f"Conciliação concluída: "
@@ -388,7 +255,7 @@ class MotorConciliacao:
                 f"{len(matches)}/{len(lancamentos)} "
                 f"({len(matches)/len(lancamentos):.1%})"
             )
-            
+
             # Log de estatísticas por estratégia
             for nome, count in stats_estrategias.items():
                 if count > 0:
@@ -396,13 +263,13 @@ class MotorConciliacao:
                         f"  {nome}: {count} matches "
                         f"({count/len(matches):.1%} do total)"
                     )
-            
+
             return matches
-        
+
         except Exception as e:
             logger.error(f"Erro durante conciliação: {e}", exc_info=True)
             raise ConciliacaoError(f"Falha na conciliação: {e}")
-    
+
     def conciliar_com_filtros(
         self,
         lancamentos: List[Lancamento],
@@ -412,16 +279,16 @@ class MotorConciliacao:
     ) -> List[Match]:
         """
         Concilia aplicando filtros personalizados.
-        
+
         Args:
             lancamentos: Lista de lançamentos bancários
             comprovantes: Lista de comprovantes
             filtro_lancamento: Função que retorna True para incluir lançamento
             filtro_comprovante: Função que retorna True para incluir comprovante
-            
+
         Returns:
             Lista de matches encontrados
-            
+
         Example:
             >>> # Apenas lançamentos > R$ 1000
             >>> filtro = lambda l: l.valor > Decimal('1000')
@@ -433,24 +300,22 @@ class MotorConciliacao:
         # Aplicar filtros
         lanc_filtrados = lancamentos
         comp_filtrados = comprovantes
-        
+
         if filtro_lancamento:
             lanc_filtrados = [l for l in lancamentos if filtro_lancamento(l)]
             logger.info(
-                f"Filtro de lançamentos: "
-                f"{len(lanc_filtrados)}/{len(lancamentos)}"
+                f"Filtro de lançamentos: " f"{len(lanc_filtrados)}/{len(lancamentos)}"
             )
-        
+
         if filtro_comprovante:
             comp_filtrados = [c for c in comprovantes if filtro_comprovante(c)]
             logger.info(
-                f"Filtro de comprovantes: "
-                f"{len(comp_filtrados)}/{len(comprovantes)}"
+                f"Filtro de comprovantes: " f"{len(comp_filtrados)}/{len(comprovantes)}"
             )
-        
+
         # Conciliar normalmente
         return self.conciliar(lanc_filtrados, comp_filtrados)
-    
+
     def gerar_estatisticas(
         self,
         matches: List[Match],
@@ -458,11 +323,11 @@ class MotorConciliacao:
     ) -> Dict[str, any]:
         """
         Gera estatísticas detalhadas da conciliação.
-        
+
         Args:
             matches: Lista de matches encontrados
             lancamentos: Lista de lançamentos originais
-            
+
         Returns:
             Dicionário com estatísticas:
             - total_lancamentos: Total de lançamentos processados
@@ -476,7 +341,7 @@ class MotorConciliacao:
             - valor_total_conciliado: Valor total dos matches (Decimal)
             - por_metodo: Estatísticas por método de conciliação
             - por_confianca: Distribuição por faixa de confiança
-            
+
         Example:
             >>> stats = motor.gerar_estatisticas(matches, lancamentos)
             >>> print(f"Taxa: {stats['taxa_conciliacao']:.1%}")
@@ -492,47 +357,47 @@ class MotorConciliacao:
                 "confianca_max": 0.0,
                 "auto_aprovados": 0,
                 "requer_revisao": 0,
-                "valor_total_conciliado": Decimal('0'),
+                "valor_total_conciliado": Decimal("0"),
                 "por_metodo": {},
                 "por_confianca": {
-                    "alta": 0,      # >= 0.90
-                    "media": 0,     # >= 0.70
-                    "baixa": 0,     # >= 0.60
+                    "alta": 0,  # >= 0.90
+                    "media": 0,  # >= 0.70
+                    "baixa": 0,  # >= 0.60
                 },
             }
-        
+
         # Estatísticas básicas
         total_lancamentos = len(lancamentos)
         total_matches = len(matches)
         taxa_conciliacao = total_matches / total_lancamentos
-        
+
         # Confiança
         confiancas = [m.confianca for m in matches]
         confianca_media = sum(confiancas) / len(confiancas)
         confianca_min = min(confiancas)
         confianca_max = max(confiancas)
-        
+
         # Auto-aprovação
         threshold_auto = self.config["confianca_auto_aprovar"]
         auto_aprovados = sum(1 for m in matches if m.confianca >= threshold_auto)
         requer_revisao = total_matches - auto_aprovados
-        
+
         # Valor total
         valor_total = sum(m.lancamento.valor for m in matches)
-        
+
         # Por método
         por_metodo: Dict[str, int] = {}
         for match in matches:
             metodo = match.metodo
             por_metodo[metodo] = por_metodo.get(metodo, 0) + 1
-        
+
         # Por faixa de confiança
         por_confianca = {
             "alta": sum(1 for m in matches if m.confianca >= 0.90),
             "media": sum(1 for m in matches if 0.70 <= m.confianca < 0.90),
             "baixa": sum(1 for m in matches if 0.60 <= m.confianca < 0.70),
         }
-        
+
         return {
             "total_lancamentos": total_lancamentos,
             "total_matches": total_matches,
@@ -546,35 +411,35 @@ class MotorConciliacao:
             "por_metodo": por_metodo,
             "por_confianca": por_confianca,
         }
-    
+
     def gerar_relatorio(
         self,
         matches: List[Match],
         lancamentos: List[Lancamento],
-        formato: str = "texto"
+        formato: str = "texto",
     ) -> str:
         """
         Gera relatório formatado da conciliação.
-        
+
         Args:
             matches: Lista de matches encontrados
             lancamentos: Lista de lançamentos originais
             formato: Formato do relatório ("texto" ou "markdown")
-            
+
         Returns:
             String com relatório formatado
-            
+
         Example:
             >>> relatorio = motor.gerar_relatorio(matches, lancamentos)
             >>> print(relatorio)
         """
         stats = self.gerar_estatisticas(matches, lancamentos)
-        
+
         if formato == "markdown":
             return self._gerar_relatorio_markdown(stats)
         else:
             return self._gerar_relatorio_texto(stats)
-    
+
     def _gerar_relatorio_texto(self, stats: Dict) -> str:
         """Gera relatório em formato texto."""
         linhas = [
@@ -600,25 +465,29 @@ class MotorConciliacao:
             f"  R$ {stats['valor_total_conciliado']:,.2f}",
             "",
         ]
-        
-        if stats['por_metodo']:
-            linhas.extend([
-                "POR MÉTODO:",
-                *[f"  {k}: {v}" for k, v in stats['por_metodo'].items()],
+
+        if stats["por_metodo"]:
+            linhas.extend(
+                [
+                    "POR MÉTODO:",
+                    *[f"  {k}: {v}" for k, v in stats["por_metodo"].items()],
+                    "",
+                ]
+            )
+
+        linhas.extend(
+            [
+                "POR FAIXA DE CONFIANÇA:",
+                f"  Alta (≥90%):              {stats['por_confianca']['alta']}",
+                f"  Média (70-90%):           {stats['por_confianca']['media']}",
+                f"  Baixa (60-70%):           {stats['por_confianca']['baixa']}",
                 "",
-            ])
-        
-        linhas.extend([
-            "POR FAIXA DE CONFIANÇA:",
-            f"  Alta (≥90%):              {stats['por_confianca']['alta']}",
-            f"  Média (70-90%):           {stats['por_confianca']['media']}",
-            f"  Baixa (60-70%):           {stats['por_confianca']['baixa']}",
-            "",
-            "=" * 60,
-        ])
-        
+                "=" * 60,
+            ]
+        )
+
         return "\n".join(linhas)
-    
+
     def _gerar_relatorio_markdown(self, stats: Dict) -> str:
         """Gera relatório em formato markdown."""
         linhas = [
@@ -646,40 +515,42 @@ class MotorConciliacao:
             f"**R$ {stats['valor_total_conciliado']:,.2f}**",
             "",
         ]
-        
-        if stats['por_metodo']:
-            linhas.extend([
-                "## Por Método",
+
+        if stats["por_metodo"]:
+            linhas.extend(
+                [
+                    "## Por Método",
+                    "",
+                    *[f"- **{k}:** {v}" for k, v in stats["por_metodo"].items()],
+                    "",
+                ]
+            )
+
+        linhas.extend(
+            [
+                "## Por Faixa de Confiança",
                 "",
-                *[f"- **{k}:** {v}" for k, v in stats['por_metodo'].items()],
-                "",
-            ])
-        
-        linhas.extend([
-            "## Por Faixa de Confiança",
-            "",
-            f"- **Alta (≥90%):** {stats['por_confianca']['alta']}",
-            f"- **Média (70-90%):** {stats['por_confianca']['media']}",
-            f"- **Baixa (60-70%):** {stats['por_confianca']['baixa']}",
-        ])
-        
+                f"- **Alta (≥90%):** {stats['por_confianca']['alta']}",
+                f"- **Média (70-90%):** {stats['por_confianca']['media']}",
+                f"- **Baixa (60-70%):** {stats['por_confianca']['baixa']}",
+            ]
+        )
+
         return "\n".join(linhas)
-    
+
     def calcular_taxa_conciliacao(
-        self,
-        matches: List[Match],
-        lancamentos: List[Lancamento]
+        self, matches: List[Match], lancamentos: List[Lancamento]
     ) -> float:
         """
         Calcula taxa de conciliação.
-        
+
         Args:
             matches: Lista de matches encontrados
             lancamentos: Lista de lançamentos originais
-            
+
         Returns:
             Taxa de conciliação (0.0 a 1.0)
-            
+
         Example:
             >>> taxa = motor.calcular_taxa_conciliacao(matches, lancamentos)
             >>> print(f"Taxa: {taxa:.1%}")
@@ -687,14 +558,14 @@ class MotorConciliacao:
         if not lancamentos:
             return 0.0
         return len(matches) / len(lancamentos)
-    
+
     def obter_performance(self) -> Dict[str, any]:
         """
         Obtém métricas de performance do motor.
-        
+
         Returns:
             Dicionário com métricas de performance
-            
+
         Example:
             >>> perf = motor.obter_performance()
             >>> print(f"Tempo médio: {perf['tempo_medio']:.2f}s")
@@ -702,18 +573,18 @@ class MotorConciliacao:
         if self._total_conciliacoes == 0:
             return {
                 "total_conciliacoes": 0,
-                "tempo_total": Decimal('0'),
-                "tempo_medio": Decimal('0'),
+                "tempo_total": Decimal("0"),
+                "tempo_medio": Decimal("0"),
             }
-        
+
         tempo_medio = self._tempo_total / self._total_conciliacoes
-        
+
         return {
             "total_conciliacoes": self._total_conciliacoes,
             "tempo_total": float(self._tempo_total),
             "tempo_medio": float(tempo_medio),
         }
-    
+
     def __repr__(self) -> str:
         """Representação string do motor."""
         return (
@@ -731,19 +602,19 @@ class MotorConciliacao:
 def criar_motor_padrao() -> MotorConciliacao:
     """
     Cria motor com configuração padrão.
-    
+
     Returns:
         MotorConciliacao configurado com estratégia exato
-        
+
     Example:
         >>> motor = criar_motor_padrao()
         >>> matches = motor.conciliar(lancamentos, comprovantes)
     """
     from src.conciliacao.estrategias import EstrategiaExato
-    
+
     motor = MotorConciliacao()
     motor.adicionar_estrategia(EstrategiaExato())
-    
+
     logger.info("Motor padrão criado com EstrategiaExato")
     return motor
 
@@ -751,7 +622,7 @@ def criar_motor_padrao() -> MotorConciliacao:
 def info() -> None:
     """
     Exibe informações sobre o motor de conciliação.
-    
+
     Example:
         >>> from src.conciliacao.motor import info
         >>> info()

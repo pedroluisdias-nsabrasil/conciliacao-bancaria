@@ -18,7 +18,7 @@ __all__ = [
     "LeitorCSV",
     "LeitorPDF",
     "normalizar_data",
-    "normalizar_valor", 
+    "normalizar_valor",
     "limpar_descricao",
     "identificar_tipo_lancamento",
 ]
