@@ -1,4 +1,5 @@
-﻿# Python
+﻿
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -16,10 +17,17 @@ env/
 
 # Dados sensíveis
 dados/
+*.csv
+*.pdf
+*.xlsx
+logs/
+*.log
 *.db
 *.sqlite
 
 # Logs
+__pycache__/
+*.pyc
 *.log
 logs/
 
@@ -32,6 +40,8 @@ config/local.yaml
 *.pdf
 
 # Temporários
+*.tmp
+temp/
 .DS_Store
 Thumbs.db
 *.bak
