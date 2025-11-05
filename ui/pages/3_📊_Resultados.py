@@ -8,6 +8,7 @@ Modificações:
 - Integração com GeradorPDF
 """
 
+import setup_path  # Configurar path para imports
 import streamlit as st
 from datetime import datetime
 from pathlib import Path

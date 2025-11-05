@@ -4,6 +4,7 @@ Página de Regras de Auto-Conciliação.
 Mostra regras ativas, estatísticas e permite recarregar.
 """
 
+import setup_path # Configurar path para imports
 import streamlit as st
 from pathlib import Path
 import sys

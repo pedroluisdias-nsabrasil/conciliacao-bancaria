@@ -6,7 +6,7 @@ Permite configurar e executar o motor de conciliação bancária.
 Author: Pedro Luis (pedroluisdias@br-nsa.com)
 Created: 04/11/2025
 """
-
+import setup_path  # Configurar path para imports
 import streamlit as st
 from pathlib import Path
 import sys
