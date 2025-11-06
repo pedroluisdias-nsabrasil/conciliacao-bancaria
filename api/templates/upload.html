@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}Upload - Sistema de Conciliação Bancária{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-upload"></i>
+            Upload de Arquivos
+        </h1>
+    </div>
+</div>
+
+<!-- Card: Upload de Extrato -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                    1. Extrato Bancário (CSV)
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="formExtrato" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="inputExtrato" class="form-label">
+                            Selecione o arquivo CSV do extrato
+                        </label>
+                        <input 
+                            type="file" 
+                            class="form-control" 
+                            id="inputExtrato" 
+                            name="arquivo"
+                            accept=".csv"
+                            required
+                        >
+                        <div class="form-text">
+                            Apenas arquivos .csv são aceitos
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-upload"></i>
+                        Enviar Extrato
+                    </button>
+                </form>
+                
+                <div id="resultadoExtrato" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Upload de Comprovantes -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                    2. Comprovantes (PDF)
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="formComprovantes" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="inputComprovantes" class="form-label">
+                            Selecione os arquivos PDF dos comprovantes
+                        </label>
+                        <input 
+                            type="file" 
+                            class="form-control" 
+                            id="inputComprovantes" 
+                            name="arquivos"
+                            accept=".pdf"
+                            multiple
+                            required
+                        >
+                        <div class="form-text">
+                            Você pode selecionar múltiplos arquivos PDF
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-upload"></i>
+                        Enviar Comprovantes
+                    </button>
+                </form>
+                
+                <div id="resultadoComprovantes" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card: Status dos Arquivos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Status dos Arquivos Enviados
+                </h5>
+            </div>
+            <div class="card-body">
+                <button id="btnVerificarStatus" class="btn btn-info mb-3">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Atualizar Status
+                </button>
+                        
+                <button id="btnLimparTudo" class="btn btn-danger mb-3 ms-2">
+                    <i class="bi bi-trash"></i>
+                    Limpar Tudo
+                </button>
+
+             
+                <div id="resultadoStatus"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Próximo Passo -->
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <div class="alert alert-success" role="alert">
+            <h5 class="alert-heading">
+                <i class="bi bi-check-circle"></i>
+                Arquivos enviados com sucesso?
+            </h5>
+            <p>Agora você pode executar a conciliação!</p>
+            <hr>
+            <a href="/conciliar" class="btn btn-success">
+                <i class="bi bi-arrow-right"></i>
+                Ir para Conciliação
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ==================== UPLOAD DE EXTRATO ====================
+document.getElementById('formExtrato').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const resultadoDiv = document.getElementById('resultadoExtrato');
+    
+    resultadoDiv.innerHTML = `
+        <div class="alert alert-info">
+            <i class="bi bi-hourglass-split"></i>
+            Enviando extrato...
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/api/upload/extrato', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            resultadoDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i>
+                    <strong>Sucesso!</strong> ${data.mensagem}
+                    <br><small>Arquivo: ${data.arquivo}</small>
+                </div>
+            `;
+            verificarStatus();
+        } else {
+            resultadoDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i>
+                    <strong>Erro:</strong> ${data.detail}
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultadoDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i>
+                <strong>Erro:</strong> ${error.message}
+            </div>
+        `;
+    }
+});
+
+// ==================== UPLOAD DE COMPROVANTES ====================
+document.getElementById('formComprovantes').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    const fileInput = document.getElementById('inputComprovantes');
+    
+    for (const file of fileInput.files) {
+        formData.append('arquivos', file);
+    }
+    
+    const resultadoDiv = document.getElementById('resultadoComprovantes');
+    
+    resultadoDiv.innerHTML = `
+        <div class="alert alert-info">
+            <i class="bi bi-hourglass-split"></i>
+            Enviando ${fileInput.files.length} comprovante(s)...
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/api/upload/comprovantes', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            resultadoDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i>
+                    <strong>Sucesso!</strong> ${data.mensagem}
+                </div>
+            `;
+            verificarStatus();
+        } else {
+            resultadoDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i>
+                    <strong>Erro:</strong> ${data.detail}
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultadoDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i>
+                <strong>Erro:</strong> ${error.message}
+            </div>
+        `;
+    }
+});
+
+// ==================== VERIFICAR STATUS ====================
+async function verificarStatus() {
+    const resultadoDiv = document.getElementById('resultadoStatus');
+    
+    resultadoDiv.innerHTML = `
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/api/upload/status');
+        const data = await response.json();
+        
+        if (response.ok) {
+            resultadoDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Extratos (${data.extratos.total})</h6>
+                        <ul class="list-group">
+                            ${data.extratos.arquivos.map(arquivo => `
+                                <li class="list-group-item">
+                                    <i class="bi bi-file-earmark-spreadsheet text-primary"></i>
+                                    ${arquivo}
+                                </li>
+                            `).join('') || '<li class="list-group-item text-muted">Nenhum extrato enviado</li>'}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Comprovantes (${data.comprovantes.total})</h6>
+                        <ul class="list-group">
+                            ${data.comprovantes.arquivos.slice(0, 5).map(arquivo => `
+                                <li class="list-group-item">
+                                    <i class="bi bi-file-earmark-pdf text-success"></i>
+                                    ${arquivo}
+                                </li>
+                            `).join('') || '<li class="list-group-item text-muted">Nenhum comprovante enviado</li>'}
+                            ${data.comprovantes.total > 5 ? `
+                                <li class="list-group-item text-muted">
+                                    ... e mais ${data.comprovantes.total - 5} arquivo(s)
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultadoDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i>
+                    Erro ao verificar status
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultadoDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i>
+                <strong>Erro:</strong> ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Verificar status ao carregar a página
+document.getElementById('btnVerificarStatus').addEventListener('click', verificarStatus);
+window.addEventListener('load', verificarStatus);
+
+// ==================== LIMPAR UPLOADS ====================
+document.getElementById('btnLimparTudo').addEventListener('click', async () => {
+    if (!confirm('Tem certeza que deseja remover TODOS os arquivos enviados?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/upload/limpar', {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('✅ ' + data.mensagem);
+            verificarStatus();
+        } else {
+            alert('❌ Erro: ' + data.detail);
+        }
+    } catch (error) {
+        alert('❌ Erro: ' + error.message);
+    }
+});
+</script>
+{% endblock %}

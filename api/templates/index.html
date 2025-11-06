@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Sistema de Conciliação Bancária{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row mb-5">
+    <div class="col-12 text-center">
+        <h1 class="display-4 mb-3">
+            <i class="bi bi-bank2 text-primary"></i>
+            Sistema de Conciliação Bancária
+        </h1>
+        <p class="lead text-muted">
+            Automatize a conciliação de extratos bancários com comprovantes de pagamento
+        </p>
+    </div>
+</div>
+
+<!-- Cards Principais -->
+<div class="row g-4 mb-5">
+    <!-- Card Upload -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm hover-card">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-upload display-1 text-primary"></i>
+                </div>
+                <h3 class="card-title">1. Upload</h3>
+                <p class="card-text">
+                    Envie seu extrato bancário (CSV) e os comprovantes de pagamento (PDF)
+                </p>
+                <a href="/upload" class="btn btn-primary">
+                    <i class="bi bi-arrow-right"></i> Ir para Upload
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Conciliar -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm hover-card">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-arrow-left-right display-1 text-success"></i>
+                </div>
+                <h3 class="card-title">2. Conciliar</h3>
+                <p class="card-text">
+                    Execute o motor de conciliação automática com algoritmos inteligentes
+                </p>
+                <a href="/conciliar" class="btn btn-success">
+                    <i class="bi bi-arrow-right"></i> Ir para Conciliação
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Resultados -->
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm hover-card">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-file-earmark-excel display-1 text-info"></i>
+                </div>
+                <h3 class="card-title">3. Relatórios</h3>
+                <p class="card-text">
+                    Visualize resultados e baixe relatórios em Excel com análise completa
+                </p>
+                <a href="/conciliar" class="btn btn-info">
+                    <i class="bi bi-arrow-right"></i> Ver Resultados
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Benefícios -->
+<div class="row">
+    <div class="col-12">
+        <h2 class="text-center mb-4">
+            <i class="bi bi-star-fill text-warning"></i>
+            Benefícios do Sistema
+        </h2>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-3">
+        <div class="text-center">
+            <div class="mb-3">
+                <i class="bi bi-speedometer2 display-4 text-primary"></i>
+            </div>
+            <h5>Velocidade</h5>
+            <p class="text-muted">
+                Reduza o tempo de conciliação em até 85%
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="text-center">
+            <div class="mb-3">
+                <i class="bi bi-bullseye display-4 text-success"></i>
+            </div>
+            <h5>Precisão</h5>
+            <p class="text-muted">
+                Alcance >95% de precisão nos matches automáticos
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="text-center">
+            <div class="mb-3">
+                <i class="bi bi-graph-up display-4 text-info"></i>
+            </div>
+            <h5>Produtividade</h5>
+            <p class="text-muted">
+                60-70% de conciliação automática no MVP
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="text-center">
+            <div class="mb-3">
+                <i class="bi bi-shield-check display-4 text-warning"></i>
+            </div>
+            <h5>Confiabilidade</h5>
+            <p class="text-muted">
+                Sistema testado com 91+ testes automatizados
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Como Funciona -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title mb-4">
+                    <i class="bi bi-question-circle"></i>
+                    Como Funciona?
+                </h3>
+                
+                <ol class="list-group list-group-numbered">
+                    <li class="list-group-item">
+                        <strong>Upload de Arquivos:</strong> Envie seu extrato bancário (CSV) e comprovantes (PDF)
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Processamento OCR:</strong> Sistema extrai dados dos PDFs automaticamente
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Matching Inteligente:</strong> Algoritmos correlacionam lançamentos com comprovantes
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Regras Automáticas:</strong> Tarifas bancárias são auto-conciliadas
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Relatório Final:</strong> Baixe Excel com matches e pendências
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

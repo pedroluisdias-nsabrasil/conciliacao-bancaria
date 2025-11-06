@@ -113,6 +113,7 @@ class MotorConciliacao:
             "tolerancia_dias": 3,
             "tolerancia_valor": 0.50,
             "confianca_minima": 0.60,
+            "confianca_auto_aprovar": 0.90,  # ✅ ADICIONAR ESTA LINHA!
         }
         # Variáveis de estatísticas
         self._tempo_total = Decimal('0')
@@ -226,7 +227,7 @@ class MotorConciliacao:
                                     f"  ✓ Match encontrado! "
                                     f"Estratégia: {estrategia.nome}, "
                                     f"Confiança: {match.confianca:.1%}, "
-                                    f"Comprovante: {match.comprovante.arquivo}"
+                                    f"Comprovante: {match.comprovante.arquivo if match.comprovante else 'AUTO (Regra)'}"
                                 )
                                 break  # Para no primeiro match
                             else:

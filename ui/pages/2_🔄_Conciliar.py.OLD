@@ -1,0 +1,516 @@
+﻿"""
+PÃ¡gina de ConciliaÃ§Ã£o - Sistema de ConciliaÃ§Ã£o BancÃ¡ria
+VersÃ£o: 2.0 - Com processamento de comprovantes PDF
+Data: 05/11/2025
+
+MODIFICAÃ‡Ã•ES:
+- Integrado LeitorOCR para processar comprovantes PDF
+- Barra de progresso detalhada durante processamento
+- Logs de extraÃ§Ã£o de cada comprovante
+- Tratamento de erros por arquivo
+- EstatÃ­sticas de processamento OCR
+"""
+
+import streamlit as st
+import logging
+from decimal import Decimal
+from pathlib import Path
+from datetime import datetime
+
+# ========== CONFIGURAÃ‡ÃƒO DO PYTHONPATH ==========
+import sys
+from pathlib import Path
+
+# Detectar se estamos em pages/ ou ui/
+current_file = Path(__file__).resolve()
+if current_file.parent.name == 'pages':
+    # Estamos em ui/pages/, subir 2 nÃ­veis para raiz
+    project_root = current_file.parent.parent.parent
+else:
+    # Estamos em ui/, subir 1 nÃ­vel
+    project_root = current_file.parent.parent
+
+# Adicionar raiz ao path se nÃ£o estiver
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+# ========== FIM PYTHONPATH ==========
+
+from src.conciliacao import MotorConciliacao
+from src.ingestao import LeitorOCR
+from src.modelos import Comprovante
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# ========== CONFIGURAÃ‡ÃƒO DA PÃGINA ==========
+st.set_page_config(
+    page_title="Conciliar - Sistema de ConciliaÃ§Ã£o BancÃ¡ria",
+    page_icon="ðŸ”„",
+    layout="wide"
+)
+
+st.title("ðŸ”„ ConciliaÃ§Ã£o BancÃ¡ria")
+st.markdown("---")
+
+# ========== FUNÃ‡Ã•ES AUXILIARES ==========
+
+def inicializar_session_state():
+    """Inicializa variÃ¡veis do session_state."""
+    if 'motor_config' not in st.session_state:
+        st.session_state.motor_config = {
+            'tolerancia_dias': 3,
+            'tolerancia_valor': Decimal('0.50'),
+            'confianca_minima': 0.70,
+            'confianca_auto_aprovar': 0.90
+        }
+    
+    if 'matches' not in st.session_state:
+        st.session_state.matches = []
+    
+    if 'estatisticas' not in st.session_state:
+        st.session_state.estatisticas = {}
+
+def validar_prerequisitos():
+    """Valida se pode executar conciliaÃ§Ã£o."""
+    if 'lancamentos' not in st.session_state or not st.session_state.lancamentos:
+        st.warning("âš ï¸ Nenhum extrato bancÃ¡rio carregado!")
+        st.info("ðŸ“¤ Por favor, faÃ§a upload do extrato primeiro.")
+        if st.button("ðŸ“¤ Ir para Upload", type="primary"):
+            st.switch_page("pages/1_ðŸ“¤_Upload.py")
+        st.stop()
+    
+    if 'comprovantes_paths' not in st.session_state or not st.session_state.comprovantes_paths:
+        st.warning("âš ï¸ Nenhum comprovante carregado!")
+        st.info("ðŸ“¤ Por favor, faÃ§a upload dos comprovantes primeiro.")
+        if st.button("ðŸ“¤ Ir para Upload", type="primary"):
+            st.switch_page("pages/1_ðŸ“¤_Upload.py")
+        st.stop()
+
+def render_configuracoes():
+    """Renderiza painel de configuraÃ§Ãµes."""
+    st.subheader("âš™ï¸ ConfiguraÃ§Ãµes da ConciliaÃ§Ã£o")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### ðŸ“Š ParÃ¢metros de Matching")
+        
+        tolerancia_dias = st.slider(
+            "TolerÃ¢ncia de Dias",
+            min_value=0, max_value=7, 
+            value=st.session_state.motor_config['tolerancia_dias'],
+            help="DiferenÃ§a mÃ¡xima de dias entre lanÃ§amento e comprovante"
+        )
+        
+        tolerancia_valor = st.number_input(
+            "TolerÃ¢ncia de Valor (R$)",
+            min_value=0.0, max_value=10.0, 
+            value=float(st.session_state.motor_config.get('tolerancia_valor', 0.50)),
+            step=0.10,
+            format="%.2f",
+            help="DiferenÃ§a mÃ¡xima de valor (recomendado: R$ 0.50)"
+        )
+        
+        confianca_minima = st.slider(
+            "ConfianÃ§a MÃ­nima",
+            min_value=50, max_value=100, 
+            value=int(st.session_state.motor_config['confianca_minima'] * 100),
+            format="%d%%",
+            help="ConfianÃ§a mÃ­nima para aceitar match (recomendado: 70%)"
+        )
+    
+    with col2:
+        st.markdown("### âœ… ClassificaÃ§Ã£o AutomÃ¡tica")
+        
+        auto_aprovar = st.slider(
+            "Auto-aprovar Acima de",
+            min_value=confianca_minima, max_value=100,
+            value=int(st.session_state.motor_config['confianca_auto_aprovar'] * 100),
+            format="%d%%",
+            help="Matches com confianÃ§a acima deste valor sÃ£o aprovados automaticamente"
+        )
+        
+        # Mostrar faixas
+        st.info(f"""
+        **ClassificaÃ§Ã£o dos Matches:**
+        - âœ… **Auto-aprovado:** â‰¥ {auto_aprovar}%
+        - âš ï¸ **Revisar:** {confianca_minima}% - {auto_aprovar-1}%
+        - âŒ **Rejeitar:** < {confianca_minima}%
+        """)
+    
+    # Atualizar config no session_state
+    st.session_state.motor_config.update({
+        'tolerancia_dias': tolerancia_dias,
+        'tolerancia_valor': Decimal(str(tolerancia_valor)),
+        'confianca_minima': confianca_minima / 100,
+        'confianca_auto_aprovar': auto_aprovar / 100
+    })
+
+def render_resumo_dados():
+    """Renderiza resumo dos dados carregados."""
+    st.subheader("ðŸ“‹ Resumo dos Dados")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        num_lancamentos = len(st.session_state.lancamentos)
+        st.metric(
+            "LanÃ§amentos Carregados",
+            num_lancamentos,
+            delta=None,
+            help="Total de lanÃ§amentos no extrato bancÃ¡rio"
+        )
+    
+    with col2:
+        num_comprovantes = len(st.session_state.comprovantes_paths)
+        st.metric(
+            "Comprovantes Enviados",
+            num_comprovantes,
+            delta=None,
+            help="Total de PDFs de comprovantes enviados"
+        )
+    
+    with col3:
+        # Calcular cobertura potencial
+        cobertura = min(100, (num_comprovantes / num_lancamentos * 100)) if num_lancamentos > 0 else 0
+        st.metric(
+            "Cobertura Potencial",
+            f"{cobertura:.0f}%",
+            delta=None,
+            help="Percentual de lanÃ§amentos que podem ser conciliados"
+        )
+    
+    st.markdown("---")
+
+def processar_comprovantes(progress_callback=None):
+    """
+    Processa todos os PDFs de comprovantes usando LeitorOCR.
+    
+    Args:
+        progress_callback: FunÃ§Ã£o para atualizar progress bar
+        
+    Returns:
+        Lista de objetos Comprovante extraÃ­dos
+    """
+    comprovantes_objetos = []
+    
+    # Inicializar LeitorOCR
+    try:
+        leitor_ocr = LeitorOCR(
+            confianca_minima=st.session_state.motor_config['confianca_minima']
+        )
+        logger.info("âœ“ LeitorOCR inicializado com sucesso")
+    except Exception as e:
+        logger.error(f"Erro ao inicializar LeitorOCR: {e}")
+        st.error(f"âŒ Erro ao inicializar OCR: {e}")
+        return []
+    
+    # Processar cada PDF
+    total = len(st.session_state.comprovantes_paths)
+    sucessos = 0
+    falhas = 0
+    
+    for idx, caminho in enumerate(st.session_state.comprovantes_paths):
+        try:
+            # Atualizar progresso
+            if progress_callback:
+                progresso = (idx + 1) / total
+                progress_callback(progresso, f"Processando {caminho.name}...")
+            
+            logger.info(f"Processando [{idx+1}/{total}]: {caminho.name}")
+            
+            # Extrair comprovante
+            comprovante = leitor_ocr.extrair_comprovante(str(caminho))
+            
+            if comprovante:
+                comprovantes_objetos.append(comprovante)
+                sucessos += 1
+                logger.info(
+                    f"  âœ“ ExtraÃ­do: R$ {comprovante.valor} em {comprovante.data} "
+                    f"(confianÃ§a: {comprovante.confianca_ocr:.1%})"
+                )
+            else:
+                falhas += 1
+                logger.warning(f"  âš  NÃ£o foi possÃ­vel extrair dados de {caminho.name}")
+                
+        except Exception as e:
+            falhas += 1
+            logger.error(f"  âœ— Erro ao processar {caminho.name}: {e}")
+    
+    # Log final
+    logger.info("="*60)
+    logger.info(f"PROCESSAMENTO DE COMPROVANTES CONCLUÃDO")
+    logger.info(f"  Total processados: {total}")
+    logger.info(f"  Sucessos: {sucessos}")
+    logger.info(f"  Falhas: {falhas}")
+    logger.info(f"  Taxa de sucesso: {sucessos/total*100:.1f}%")
+    logger.info("="*60)
+    
+    return comprovantes_objetos
+
+def executar_conciliacao():
+    """
+    Executa o processo completo de conciliaÃ§Ã£o.
+    
+    Fluxo:
+    1. Processar comprovantes PDF com OCR
+    2. Executar motor de conciliaÃ§Ã£o
+    3. Classificar matches
+    4. Gerar estatÃ­sticas
+    """
+    
+    # Container para progresso
+    progress_container = st.empty()
+    status_container = st.empty()
+    
+    try:
+        # ========== FASE 1: PROCESSAR COMPROVANTES ==========
+        with status_container.container():
+            st.info("ðŸ” Fase 1/2: Processando comprovantes PDF com OCR...")
+        
+        progress_bar = progress_container.progress(0)
+        
+        def atualizar_progresso_ocr(valor, texto):
+            progress_bar.progress(valor * 0.5)  # 0-50% para OCR
+            with status_container.container():
+                st.info(f"ðŸ” {texto}")
+        
+        # Processar comprovantes
+        comprovantes_objetos = processar_comprovantes(atualizar_progresso_ocr)
+        
+        if not comprovantes_objetos:
+            st.error("âŒ Nenhum comprovante foi processado com sucesso!")
+            st.warning("""
+            **PossÃ­veis causas:**
+            - PDFs com baixa qualidade de imagem
+            - Formato de comprovante nÃ£o reconhecido
+            - Erro na instalaÃ§Ã£o do Tesseract OCR
+            
+            **Verifique os logs para mais detalhes.**
+            """)
+            return
+        
+        # Mostrar estatÃ­sticas de OCR
+        total_enviados = len(st.session_state.comprovantes_paths)
+        total_processados = len(comprovantes_objetos)
+        
+        with status_container.container():
+            st.success(f"""
+            âœ… **OCR ConcluÃ­do!**
+            - Comprovantes processados: {total_processados}/{total_enviados}
+            - Taxa de sucesso: {total_processados/total_enviados*100:.1f}%
+            """)
+        
+        # ========== FASE 2: CONCILIAÃ‡ÃƒO ==========
+        with status_container.container():
+            st.info("âš™ï¸ Fase 2/2: Executando motor de conciliaÃ§Ã£o...")
+        
+        progress_bar.progress(0.6)
+        
+        # Criar motor
+        motor = MotorConciliacao()
+        motor.config.update(st.session_state.motor_config)
+        
+        logger.info("Executando conciliaÃ§Ã£o...")
+        logger.info(f"  LanÃ§amentos: {len(st.session_state.lancamentos)}")
+        logger.info(f"  Comprovantes: {len(comprovantes_objetos)}")
+        
+        progress_bar.progress(0.7)
+        
+        # Executar conciliaÃ§Ã£o
+        matches = motor.conciliar(
+            lancamentos=st.session_state.lancamentos,
+            comprovantes=comprovantes_objetos
+        )
+        
+        progress_bar.progress(0.9)
+        
+        # Gerar estatÃ­sticas
+        from src.conciliacao.utils import gerar_estatisticas
+        
+        estatisticas = gerar_estatisticas(
+            lancamentos=st.session_state.lancamentos,
+            comprovantes=comprovantes_objetos,
+            matches=matches,
+            tempo_execucao=motor._tempo_total
+        )
+        
+        progress_bar.progress(1.0)
+        
+        # Salvar resultados no session_state
+        st.session_state.matches = matches
+        st.session_state.estatisticas = estatisticas
+        
+        # ========== MOSTRAR RESULTADOS ==========
+        progress_container.empty()
+        status_container.empty()
+        
+        st.success("âœ… ConciliaÃ§Ã£o concluÃ­da com sucesso!")
+        
+        # MÃ©tricas principais
+        st.markdown("### ðŸ“Š Resultados")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                "Matches Encontrados",
+                estatisticas['total_matches'],
+                delta=f"{estatisticas['taxa_conciliacao']:.1f}%"
+            )
+        
+        with col2:
+            auto = estatisticas['matches_auto_aprovados']
+            st.metric(
+                "Auto-aprovados",
+                auto,
+                delta=f"{auto/len(st.session_state.lancamentos)*100:.1f}%",
+                delta_color="normal"
+            )
+        
+        with col3:
+            revisar = estatisticas['matches_revisar']
+            st.metric(
+                "Para Revisar",
+                revisar,
+                delta=None
+            )
+        
+        with col4:
+            nao_conc = estatisticas['nao_conciliados']
+            st.metric(
+                "NÃ£o Conciliados",
+                nao_conc,
+                delta=None
+            )
+        
+        st.markdown("---")
+        
+        # Detalhes por estratÃ©gia
+        if estatisticas.get('por_estrategia'):
+            st.markdown("### ðŸŽ¯ Detalhamento por EstratÃ©gia")
+            
+            cols = st.columns(len(estatisticas['por_estrategia']))
+            
+            for idx, (nome_estrategia, stats) in enumerate(estatisticas['por_estrategia'].items()):
+                with cols[idx]:
+                    st.metric(
+                        nome_estrategia,
+                        stats['total'],
+                        delta=f"MÃ©dia: {stats['confianca_media']:.1%}"
+                    )
+        
+        st.markdown("---")
+        
+        # BotÃ£o para ver resultados detalhados
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.info(f"""
+            â±ï¸ **Tempo de execuÃ§Ã£o:** {estatisticas['tempo_execucao']:.2f}s  
+            ðŸŽ¯ **ConfianÃ§a mÃ©dia:** {estatisticas['confianca_media']:.1%}
+            """)
+        
+        with col2:
+            if st.button("ðŸ“Š Ver Resultados Detalhados", type="primary", use_container_width=True):
+                st.switch_page("pages/3_ðŸ“Š_Resultados.py")
+        
+        logger.info("âœ“ ConciliaÃ§Ã£o concluÃ­da com sucesso!")
+        
+    except Exception as e:
+        logger.error(f"Erro durante conciliaÃ§Ã£o: {e}", exc_info=True)
+        progress_container.empty()
+        status_container.empty()
+        st.error(f"âŒ Erro durante conciliaÃ§Ã£o: {str(e)}")
+        st.exception(e)
+
+# ========== INTERFACE PRINCIPAL ==========
+
+def main():
+    """FunÃ§Ã£o principal da pÃ¡gina."""
+    
+    # Inicializar session_state
+    inicializar_session_state()
+    
+    # Validar prÃ©-requisitos
+    validar_prerequisitos()
+    
+    # Renderizar configuraÃ§Ãµes
+    render_configuracoes()
+    
+    st.markdown("---")
+    
+    # Renderizar resumo dos dados
+    render_resumo_dados()
+    
+    # BotÃ£o de execuÃ§Ã£o
+    st.markdown("### ðŸš€ Executar ConciliaÃ§Ã£o")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        if st.button(
+            "â–¶ï¸ Executar ConciliaÃ§Ã£o",
+            type="primary",
+            use_container_width=True,
+            help="Processa comprovantes e executa conciliaÃ§Ã£o automÃ¡tica"
+        ):
+            executar_conciliacao()
+    
+    # InformaÃ§Ãµes adicionais
+    with st.expander("â„¹ï¸ Como funciona a conciliaÃ§Ã£o"):
+        st.markdown("""
+        ### Processo de ConciliaÃ§Ã£o
+        
+        1. **Processamento OCR:**
+           - Cada PDF de comprovante Ã© processado
+           - ExtraÃ§Ã£o de valores, datas e descriÃ§Ãµes
+           - CÃ¡lculo de confianÃ§a do OCR
+        
+        2. **Matching:**
+           - ComparaÃ§Ã£o de valores (com tolerÃ¢ncia)
+           - ComparaÃ§Ã£o de datas (com tolerÃ¢ncia)
+           - AnÃ¡lise de descriÃ§Ãµes (similaridade)
+        
+        3. **ClassificaÃ§Ã£o:**
+           - Auto-aprovado: confianÃ§a â‰¥ 90%
+           - Revisar: confianÃ§a entre 70-89%
+           - Rejeitar: confianÃ§a < 70%
+        
+        4. **EstratÃ©gias:**
+           - **Regras:** Auto-concilia tarifas bancÃ¡rias
+           - **Exato:** Match por valor e data
+           - **Fuzzy:** (futuro) Match aproximado
+        """)
+    
+    with st.expander("âš™ï¸ ConfiguraÃ§Ãµes AvanÃ§adas"):
+        st.markdown("""
+        ### Ajuste Fino dos ParÃ¢metros
+        
+        **TolerÃ¢ncia de Dias:**
+        - Valor recomendado: 3 dias
+        - Aumentar se houver atrasos no registro
+        - Diminuir para maior precisÃ£o
+        
+        **TolerÃ¢ncia de Valor:**
+        - Valor recomendado: R$ 0,50
+        - Ajustar conforme necessidade
+        - Considerar arredondamentos
+        
+        **ConfianÃ§a MÃ­nima:**
+        - Valor recomendado: 70%
+        - Aumentar para reduzir falsos positivos
+        - Diminuir para aumentar cobertura
+        
+        **Auto-aprovar:**
+        - Valor recomendado: 90%
+        - Ajustar conforme confianÃ§a no processo
+        """)
+
+if __name__ == "__main__":
+    main()
+

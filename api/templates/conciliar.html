@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+
+{% block title %}Conciliar - Sistema de Conciliação Bancária{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-arrow-left-right"></i>
+            Conciliação Automática
+        </h1>
+    </div>
+</div>
+
+<!-- Botão Executar -->
+<div class="row mb-4">
+    <div class="col-12">
+        <button id="btnExecutar" class="btn btn-success btn-lg w-100">
+            <i class="bi bi-play-circle"></i>
+            Executar Conciliação
+        </button>
+    </div>
+</div>
+
+<!-- Progresso -->
+<div id="divProgresso" class="row mb-4" style="display: none;">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5>
+                    <i class="bi bi-hourglass-split"></i>
+                    Processando...
+                </h5>
+                <div class="progress">
+                    <div 
+                        id="barraProgresso" 
+                        class="progress-bar progress-bar-striped progress-bar-animated" 
+                        role="progressbar" 
+                        style="width: 0%"
+                    ></div>
+                </div>
+                <p id="textoProgresso" class="mt-2 mb-0 text-muted"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas -->
+<div id="divEstatisticas" class="row g-4 mb-4" style="display: none;">
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center">
+            <div class="card-body">
+                <i class="bi bi-list-ul display-4 text-primary"></i>
+                <h3 id="statLancamentos" class="mt-2 mb-0">-</h3>
+                <p class="text-muted mb-0">Lançamentos</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center">
+            <div class="card-body">
+                <i class="bi bi-file-earmark-pdf display-4 text-info"></i>
+                <h3 id="statComprovantes" class="mt-2 mb-0">-</h3>
+                <p class="text-muted mb-0">Comprovantes</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center">
+            <div class="card-body">
+                <i class="bi bi-check-circle display-4 text-success"></i>
+                <h3 id="statMatches" class="mt-2 mb-0">-</h3>
+                <p class="text-muted mb-0">Matches</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center">
+            <div class="card-body">
+                <i class="bi bi-percent display-4 text-warning"></i>
+                <h3 id="statTaxa" class="mt-2 mb-0">-</h3>
+                <p class="text-muted mb-0">Taxa</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs de Resultados -->
+<div id="divResultados" style="display: none;">
+    <ul class="nav nav-tabs" id="tabsResultados" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button 
+                class="nav-link active" 
+                id="tab-conciliados" 
+                data-bs-toggle="tab" 
+                data-bs-target="#pane-conciliados" 
+                type="button"
+            >
+                <i class="bi bi-check-circle text-success"></i>
+                Conciliados
+                <span id="badgeConciliados" class="badge bg-success ms-2">0</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button 
+                class="nav-link" 
+                id="tab-nao-conciliados" 
+                data-bs-toggle="tab" 
+                data-bs-target="#pane-nao-conciliados" 
+                type="button"
+            >
+                <i class="bi bi-x-circle text-danger"></i>
+                Não Conciliados
+                <span id="badgeNaoConciliados" class="badge bg-danger ms-2">0</span>
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="tabsResultadosContent">
+        <!-- Tab: Conciliados -->
+        <div class="tab-pane fade show active" id="pane-conciliados">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data Lanç.</th>
+                                    <th>Valor</th>
+                                    <th>Descrição</th>
+                                    <th>Comprovante</th>
+                                    <th>Confiança</th>
+                                    <th>Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaConciliados">
+                                <!-- Preenchido via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab: Não Conciliados -->
+        <div class="tab-pane fade" id="pane-nao-conciliados">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                    <th>Descrição</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaNaoConciliados">
+                                <!-- Preenchido via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botão Download -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <a id="btnDownload" href="/api/relatorios/download" class="btn btn-primary btn-lg">
+                <i class="bi bi-download"></i>
+                Baixar Relatório Excel
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ==================== EXECUTAR CONCILIAÇÃO ====================
+document.getElementById('btnExecutar').addEventListener('click', executarConciliacao);
+
+async function executarConciliacao() {
+    const btnExecutar = document.getElementById('btnExecutar');
+    const divProgresso = document.getElementById('divProgresso');
+    const divEstatisticas = document.getElementById('divEstatisticas');
+    const divResultados = document.getElementById('divResultados');
+    
+    // Desabilitar botão
+    btnExecutar.disabled = true;
+    
+    // Mostrar progresso
+    divProgresso.style.display = 'block';
+    divEstatisticas.style.display = 'none';
+    divResultados.style.display = 'none';
+    
+    // Simular etapas
+    const etapas = [
+        { porcentagem: 25, texto: 'Lendo extrato bancário...' },
+        { porcentagem: 50, texto: 'Processando comprovantes...' },
+        { porcentagem: 75, texto: 'Executando conciliação...' },
+        { porcentagem: 100, texto: 'Finalizando...' }
+    ];
+    
+    for (const etapa of etapas) {
+        atualizarProgresso(etapa.porcentagem, etapa.texto);
+        await sleep(500);
+    }
+    
+    try {
+        const response = await fetch('/api/conciliar/executar', {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            mostrarResultados(data);
+        } else {
+            alert(`Erro: ${data.detail}`);
+        }
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+    } finally {
+        btnExecutar.disabled = false;
+        divProgresso.style.display = 'none';
+    }
+}
+
+// ==================== ATUALIZAR PROGRESSO ====================
+function atualizarProgresso(porcentagem, texto) {
+    document.getElementById('barraProgresso').style.width = `${porcentagem}%`;
+    document.getElementById('textoProgresso').textContent = texto;
+}
+
+// ==================== MOSTRAR RESULTADOS ====================
+function mostrarResultados(data) {
+    const divEstatisticas = document.getElementById('divEstatisticas');
+    const divResultados = document.getElementById('divResultados');
+    
+    // Atualizar estatísticas
+    document.getElementById('statLancamentos').textContent = data.estatisticas.total_lancamentos;
+    document.getElementById('statComprovantes').textContent = data.estatisticas.total_comprovantes;
+    document.getElementById('statMatches').textContent = data.estatisticas.total_matches;
+    document.getElementById('statTaxa').textContent = `${data.estatisticas.taxa_conciliacao}%`;
+    
+    // Atualizar badges
+    document.getElementById('badgeConciliados').textContent = data.matches.length;
+    document.getElementById('badgeNaoConciliados').textContent = data.nao_conciliados.length;
+    
+    // Preencher tabela de conciliados
+    const tabelaConciliados = document.getElementById('tabelaConciliados');
+    tabelaConciliados.innerHTML = '';
+    
+    for (const match of data.matches) {
+        const row = tabelaConciliados.insertRow();
+        row.innerHTML = `
+            <td>${formatarData(match.lancamento.data)}</td>
+            <td>R$ ${formatarValor(match.lancamento.valor)}</td>
+            <td>${match.lancamento.descricao}</td>
+            <td>
+                ${match.comprovante ? 
+                    `<small class="text-muted">${match.comprovante.numero || 'N/A'}</small>` : 
+                    '<span class="badge bg-info">Regra</span>'
+                }
+            </td>
+            <td>
+                <span class="badge bg-${match.confianca >= 90 ? 'success' : 'warning'}">
+                    ${match.confianca}%
+                </span>
+            </td>
+            <td>
+                <small>${match.tipo}</small>
+            </td>
+        `;
+    }
+    
+    // Preencher tabela de não conciliados
+    const tabelaNaoConciliados = document.getElementById('tabelaNaoConciliados');
+    tabelaNaoConciliados.innerHTML = '';
+    
+    for (const lanc of data.nao_conciliados) {
+        const row = tabelaNaoConciliados.insertRow();
+        row.innerHTML = `
+            <td>${formatarData(lanc.data)}</td>
+            <td>R$ ${formatarValor(lanc.valor)}</td>
+            <td>${lanc.descricao}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" disabled>
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+            </td>
+        `;
+    }
+    
+    // Mostrar divs
+    divEstatisticas.style.display = 'flex';
+    divResultados.style.display = 'block';
+}
+
+// ==================== FUNÇÕES AUXILIARES ====================
+function formatarData(data) {
+    return new Date(data).toLocaleDateString('pt-BR');
+}
+
+function formatarValor(valor) {
+    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+</script>
+{% endblock %}

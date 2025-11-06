@@ -1,8 +1,8 @@
-"""
-Sistema de Conciliacao Bancaria - Interface Web.
+﻿"""
+Sistema de ConciliaÃ§Ã£o BancÃ¡ria - Interface Web.
 
-Aplicacao principal Streamlit que serve como pagina inicial
-do sistema de conciliacao bancaria.
+AplicaÃ§Ã£o principal Streamlit que serve como pÃ¡gina inicial
+do sistema de conciliaÃ§Ã£o bancÃ¡ria.
 
 Author: Pedro Luis (pedroluisdias@br-nsa.com)
 Created: 04/11/2025
@@ -12,13 +12,13 @@ Version: 1.0.0
 import sys
 from pathlib import Path
 
-# Detectar se esta em pages/ ou em ui/
+# Detectar se estÃ¡ em pages/ ou em ui/
 arquivo_atual = Path(__file__).resolve()
 if 'pages' in str(arquivo_atual.parent):
-    # Estamos em ui/pages/ - subir 2 niveis
+    # Estamos em ui/pages/ - subir 2 nÃ­veis
     raiz = arquivo_atual.parent.parent.parent
 else:
-    # Estamos em ui/ - subir 1 nivel
+    # Estamos em ui/ - subir 1 nÃ­vel
     raiz = arquivo_atual.parent.parent
 
 # Adicionar raiz e src/ ao path
@@ -30,21 +30,21 @@ if str(raiz / 'src') not in sys.path:
 import streamlit as st
 
 # ============================================================================
-# CONFIGURACAO DA PAGINA
+# CONFIGURAÃ‡ÃƒO DA PÃGINA
 # ============================================================================
 
 st.set_page_config(
-    page_title="Conciliacao Bancaria",
-    page_icon="💰",
+    page_title="ConciliaÃ§Ã£o BancÃ¡ria",
+    page_icon="ðŸ’°",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
         'Get Help': 'https://github.com/seu-usuario/conciliacao-bancaria',
         'Report a bug': 'https://github.com/seu-usuario/conciliacao-bancaria/issues',
         'About': '''
-        # Sistema de Conciliacao Bancaria v1.0
+        # Sistema de ConciliaÃ§Ã£o BancÃ¡ria v1.0
         
-        Sistema automatizado para conciliar extratos bancarios
+        Sistema automatizado para conciliar extratos bancÃ¡rios
         com comprovantes de pagamento.
         
         **Desenvolvido por:** Pedro Luis
@@ -58,7 +58,7 @@ st.set_page_config(
 # ============================================================================
 
 def init_session_state():
-    """Inicializa variaveis de sessao."""
+    """Inicializa variÃ¡veis de sessÃ£o."""
     if 'lancamentos' not in st.session_state:
         st.session_state.lancamentos = None
     
@@ -84,27 +84,33 @@ def init_session_state():
 # ============================================================================
 
 def render_sidebar():
-    """Renderiza sidebar com navegacao e estatisticas."""
+    """Renderiza sidebar com navegaÃ§Ã£o e estatÃ­sticas."""
     with st.sidebar:
-        st.image("https://via.placeholder.com/300x100/0066cc/ffffff?text=Conciliacao+Bancaria",
+        st.image("https://via.placeholder.com/300x100/0066cc/ffffff?text=Sistema+de+ConciliaÃ§Ã£o", 
                  use_container_width=True)
         
-        st.title("Conciliacao Bancaria")
+        st.title("ðŸ¦ ConciliaÃ§Ã£o BancÃ¡ria")
         st.markdown("---")
         
-        # Menu de navegacao automatico do Streamlit
-        # (aparece automaticamente acima)
-        
-        # Estatisticas rapidas
-        st.subheader("Status Atual")
+        # Navegação
+        st.subheader("📍 Navegação")
+        st.page_link("app.py", label="🏠 Home", icon="🏠")
+        st.page_link("pages/1_📤_Upload.py", label="Upload de Arquivos", icon="📤")
+        st.page_link("pages/2_🔄_Conciliar.py", label="Executar Conciliação", icon="🔄")
+        st.page_link("pages/3_📊_Resultados.py", label="Ver Resultados", icon="📊")
+        st.page_link("pages/5_📋_Regras.py", label="📋 Regras de Auto-Conciliação")
+
+        st.markdown("---")        
+        # EstatÃ­sticas rÃ¡pidas
+        st.subheader("ðŸ“ˆ Status Atual")
         
         col1, col2 = st.columns(2)
         
         with col1:
             if st.session_state.lancamentos:
-                st.metric("Lancamentos", len(st.session_state.lancamentos))
+                st.metric("LanÃ§amentos", len(st.session_state.lancamentos))
             else:
-                st.metric("Lancamentos", "0")
+                st.metric("LanÃ§amentos", "0")
         
         with col2:
             if st.session_state.comprovantes:
@@ -114,27 +120,27 @@ def render_sidebar():
         
         if st.session_state.stats:
             st.metric(
-                "Taxa de Conciliacao",
+                "Taxa de ConciliaÃ§Ã£o",
                 f"{st.session_state.stats['taxa_conciliacao']:.1%}",
                 delta=None
             )
             st.metric(
-                "Confianca Media",
+                "ConfianÃ§a MÃ©dia",
                 f"{st.session_state.stats['confianca_media']:.1%}",
                 delta=None
             )
         
         st.markdown("---")
         
-        # Configuracoes rapidas
-        with st.expander("Configuracoes"):
+        # ConfiguraÃ§Ãµes rÃ¡pidas
+        with st.expander("âš™ï¸ ConfiguraÃ§Ãµes"):
             st.session_state.motor_config['confianca_minima'] = st.slider(
-                "Confianca Minima",
+                "ConfianÃ§a MÃ­nima",
                 min_value=0.0,
                 max_value=1.0,
                 value=st.session_state.motor_config['confianca_minima'],
                 step=0.05,
-                help="Confianca minima para aceitar um match"
+                help="ConfianÃ§a mÃ­nima para aceitar um match"
             )
             
             st.session_state.motor_config['confianca_auto_aprovar'] = st.slider(
@@ -143,15 +149,15 @@ def render_sidebar():
                 max_value=1.0,
                 value=st.session_state.motor_config['confianca_auto_aprovar'],
                 step=0.05,
-                help="Confianca minima para auto-aprovar match"
+                help="ConfianÃ§a mÃ­nima para auto-aprovar match"
             )
             
             st.session_state.motor_config['tolerancia_dias'] = st.number_input(
-                "Tolerancia de Dias",
+                "TolerÃ¢ncia de Dias",
                 min_value=0,
                 max_value=30,
                 value=st.session_state.motor_config['tolerancia_dias'],
-                help="Diferenca maxima de dias entre lancamento e comprovante"
+                help="DiferenÃ§a mÃ¡xima de dias entre lanÃ§amento e comprovante"
             )
         
         st.markdown("---")
@@ -159,11 +165,11 @@ def render_sidebar():
 
 
 # ============================================================================
-# PAGINA PRINCIPAL (HOME)
+# PÃGINA PRINCIPAL (HOME)
 # ============================================================================
 
 def main():
-    """Pagina principal da aplicacao."""
+    """PÃ¡gina principal da aplicaÃ§Ã£o."""
     
     # Inicializar session state
     init_session_state()
@@ -171,9 +177,9 @@ def main():
     # Renderizar sidebar
     render_sidebar()
     
-    # Conteudo principal
-    st.title("Sistema de Conciliacao Bancaria")
-    st.markdown("### Automatize a conciliacao de extratos bancarios com comprovantes")
+    # ConteÃºdo principal
+    st.title("ðŸ¦ Sistema de ConciliaÃ§Ã£o BancÃ¡ria")
+    st.markdown("### Automatize a conciliaÃ§Ã£o de extratos bancÃ¡rios com comprovantes")
     
     st.markdown("---")
     
@@ -182,76 +188,76 @@ def main():
     
     with col1:
         st.markdown("""
-        ### 1. Upload
+        ### ðŸ“¤ 1. Upload
         
-        Faca upload do seu extrato bancario (CSV) e dos
+        FaÃ§a upload do seu extrato bancÃ¡rio (CSV) e dos 
         comprovantes de pagamento (PDF).
+        
+        [Ir para Upload â†’](./pages/1_ðŸ“¤_Upload.py)
         """)
-        if st.button("Ir para Upload", key="btn_upload", use_container_width=True):
-            st.switch_page("pages/1_📤_Upload.py")
     
     with col2:
         st.markdown("""
-        ### 2. Conciliar
+        ### ðŸ”„ 2. Conciliar
         
-        Execute a conciliacao automatica com configuracoes
+        Execute a conciliaÃ§Ã£o automÃ¡tica com configuraÃ§Ãµes
         personalizadas.
+        
+        [Ir para ConciliaÃ§Ã£o â†’](./pages/2_ðŸ”„_Conciliar.py)
         """)
-        if st.button("Ir para Conciliacao", key="btn_conciliar", use_container_width=True):
-            st.switch_page("pages/2_🔄_Conciliar.py")
     
     with col3:
         st.markdown("""
-        ### 3. Resultados
+        ### ðŸ“Š 3. Resultados
         
-        Visualize os matches encontrados, estatisticas
-        e exporte relatorios.
+        Visualize os matches encontrados, estatÃ­sticas
+        e exporte relatÃ³rios.
+        
+        [Ver Resultados â†’](./pages/3_ðŸ“Š_Resultados.py)
         """)
-        if st.button("Ver Resultados", key="btn_resultados", use_container_width=True):
-            st.switch_page("pages/3_📊_Resultados.py")
     
     st.markdown("---")
     
-    # Informacoes sobre o sistema
-    st.subheader("Sobre o Sistema")
+    # InformaÃ§Ãµes sobre o sistema
+    st.subheader("â„¹ï¸ Sobre o Sistema")
     
     with st.expander("Como funciona?", expanded=False):
         st.markdown("""
-        O sistema realiza a conciliacao em 3 etapas:
+        O sistema realiza a conciliaÃ§Ã£o em 3 etapas:
         
         1. **Leitura de Dados**
-           - Extrato bancario (CSV)
+           - Extrato bancÃ¡rio (CSV)
            - Comprovantes de pagamento (PDF com OCR)
         
         2. **Matching Inteligente**
            - Compara valores e datas
-           - Calcula confianca do match (0% a 100%)
-           - Aplica multiplas estrategias
+           - Calcula confianÃ§a do match (0% a 100%)
+           - Aplica mÃºltiplas estratÃ©gias
         
-        3. **Classificacao**
-           - Auto-aprovados (confianca >= 90%)
-           - Revisar (confianca 60-90%)
-           - Sem match (confianca < 60%)
+        3. **ClassificaÃ§Ã£o**
+           - âœ… Auto-aprovados (confianÃ§a â‰¥ 90%)
+           - âš ï¸ Revisar (confianÃ§a 60-90%)
+           - âŒ Sem match (confianÃ§a < 60%)
         """)
     
-    with st.expander("Metricas de Sucesso", expanded=False):
+    with st.expander("MÃ©tricas de Sucesso", expanded=False):
         st.markdown("""
-        ### Metas do Sistema
+        ### ðŸŽ¯ Metas do Sistema
         
-        - **Taxa de Conciliacao:** 60-70% automatica
-        - **Precisao:** >95% de matches corretos
-        - **Performance:** <5 segundos para 100 lancamentos
-        - **Reducao de Tempo:** 70% menos trabalho manual
+        - **Taxa de ConciliaÃ§Ã£o:** 60-70% automÃ¡tica
+        - **PrecisÃ£o:** >95% de matches corretos
+        - **Performance:** <5 segundos para 100 lanÃ§amentos
+        - **ReduÃ§Ã£o de Tempo:** 70% menos trabalho manual
         """)
     
     with st.expander("Formatos Suportados", expanded=False):
         st.markdown("""
-        ### Arquivos Aceitos
+        ### ðŸ“„ Arquivos Aceitos
         
-        **Extratos Bancarios:**
-        - CSV (Itau, Bradesco, Santander, Banco do Brasil, generico)
+        **Extratos BancÃ¡rios:**
+        - CSV (ItaÃº, Bradesco, Santander, Banco do Brasil, genÃ©rico)
         - Excel (XLSX)
-        - PDF com texto extraivel
+        - PDF com texto extraÃ­vel
         
         **Comprovantes:**
         - PDF com texto
@@ -259,14 +265,14 @@ def main():
         - Imagens PNG/JPG (com OCR)
         """)
     
-    # Estatisticas do projeto
+    # EstatÃ­sticas do projeto
     st.markdown("---")
-    st.subheader("Estatisticas do Projeto")
+    st.subheader("ðŸ“Š EstatÃ­sticas do Projeto")
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Linhas de Codigo", "14.228")
+        st.metric("Linhas de CÃ³digo", "14.228")
     
     with col2:
         st.metric("Testes Automatizados", "91")
@@ -279,30 +285,31 @@ def main():
     
     st.markdown("---")
     
-    # Inicio rapido
-    st.subheader("Inicio Rapido")
+    # InÃ­cio rÃ¡pido
+    st.subheader("ðŸš€ InÃ­cio RÃ¡pido")
     
     st.markdown("""
-    1. Clique em **Upload** no menu lateral
-    2. Faca upload do seu extrato bancario (CSV)
-    3. Faca upload dos comprovantes (PDF)
-    4. Clique em **Conciliar**
-    5. Veja os resultados em **Resultados**
+    1. Clique em **ðŸ“¤ Upload de Arquivos** no menu lateral
+    2. FaÃ§a upload do seu extrato bancÃ¡rio (CSV)
+    3. FaÃ§a upload dos comprovantes (PDF)
+    4. Clique em **ðŸ”„ Executar ConciliaÃ§Ã£o**
+    5. Veja os resultados em **ðŸ“Š Ver Resultados**
     """)
     
-    # Botao de acao
+    # BotÃ£o de aÃ§Ã£o
     st.markdown("")
-    if st.button("Comecar Agora", type="primary", use_container_width=True):
-        st.switch_page("pages/1_📤_Upload.py")
+    if st.button("ðŸš€ ComeÃ§ar Agora", type="primary", use_container_width=True):
+        st.switch_page("pages/1_ðŸ“¤_Upload.py")
     
     # Footer
     st.markdown("---")
     st.caption("""
-    Sistema de Conciliacao Bancaria v1.0.0 |
-    Desenvolvido por Pedro Luis |
+    Sistema de ConciliaÃ§Ã£o BancÃ¡ria v1.0.0 | 
+    Desenvolvido por Pedro Luis | 
     MVP 100% Completo
     """)
 
 
 if __name__ == "__main__":
     main()
+

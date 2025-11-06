@@ -1,0 +1,10 @@
+﻿def inicializar_session_state():
+    """Inicializa variáveis do session_state."""
+    if 'motor_config' not in st.session_state:
+        from decimal import Decimal
+        st.session_state.motor_config = {
+            'tolerancia_dias': 3,
+            'tolerancia_valor': Decimal('0.50'),
+            'confianca_minima': 0.70,
+            'confianca_auto_aprovar': 0.90
+        }
