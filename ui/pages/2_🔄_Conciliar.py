@@ -6,7 +6,24 @@ Permite configurar e executar o motor de conciliação bancária.
 Author: Pedro Luis (pedroluisdias@br-nsa.com)
 Created: 04/11/2025
 """
-import setup_path  # Configurar path para imports
+# Configurar PYTHONPATH
+import sys
+from pathlib import Path
+
+# Detectar se está em pages/ ou em ui/
+arquivo_atual = Path(__file__).resolve()
+if 'pages' in str(arquivo_atual.parent):
+    # Estamos em ui/pages/ - subir 2 níveis
+    raiz = arquivo_atual.parent.parent.parent
+else:
+    # Estamos em ui/ - subir 1 nível
+    raiz = arquivo_atual.parent.parent
+
+# Adicionar raiz e src/ ao path
+if str(raiz) not in sys.path:
+    sys.path.insert(0, str(raiz))
+if str(raiz / 'src') not in sys.path:
+    sys.path.insert(0, str(raiz / 'src'))
 import streamlit as st
 from pathlib import Path
 import sys
@@ -39,13 +56,11 @@ def executar_conciliacao(lancamentos, comprovantes, config):
     """Executa a conciliação com configurações fornecidas."""
     try:
         # Criar motor
-        motor = MotorConciliacao(config=config)
+        motor = MotorConciliacao()
+        # Atualizar configurações
+        motor.config.update(config)
         
-        # Adicionar estratégias
-        estrategia_exato = EstrategiaExato(
-            tolerancia_dias=config.get('tolerancia_dias', 3)
-        )
-        motor.adicionar_estrategia(estrategia_exato)
+        # Estratégias já inicializadas automaticamente
         
         # TODO: Processar comprovantes quando OCR estiver pronto
         # Por enquanto, usar lista vazia

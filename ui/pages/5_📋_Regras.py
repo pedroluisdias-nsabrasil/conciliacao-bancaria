@@ -4,7 +4,24 @@ Página de Regras de Auto-Conciliação.
 Mostra regras ativas, estatísticas e permite recarregar.
 """
 
-import setup_path # Configurar path para imports
+# Configurar PYTHONPATH
+import sys
+from pathlib import Path
+
+# Detectar se está em pages/ ou em ui/
+arquivo_atual = Path(__file__).resolve()
+if 'pages' in str(arquivo_atual.parent):
+    # Estamos em ui/pages/ - subir 2 níveis
+    raiz = arquivo_atual.parent.parent.parent
+else:
+    # Estamos em ui/ - subir 1 nível
+    raiz = arquivo_atual.parent.parent
+
+# Adicionar raiz e src/ ao path
+if str(raiz) not in sys.path:
+    sys.path.insert(0, str(raiz))
+if str(raiz / 'src') not in sys.path:
+    sys.path.insert(0, str(raiz / 'src'))
 import streamlit as st
 from pathlib import Path
 import sys

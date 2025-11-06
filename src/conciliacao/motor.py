@@ -114,6 +114,9 @@ class MotorConciliacao:
             "tolerancia_valor": 0.50,
             "confianca_minima": 0.60,
         }
+        # Variáveis de estatísticas
+        self._tempo_total = Decimal('0')
+        self._total_conciliacoes = 0
 
         # Log de inicialização
         logger.info(
@@ -158,8 +161,11 @@ class MotorConciliacao:
         if not lancamentos:
             raise ValueError("Lista de lançamentos não pode ser vazia")
 
+        # TEMPORÁRIO: Permitir comprovantes vazios para MVP (EstrategiaRegras funciona sem eles)
+        # if not comprovantes:
+        #     raise ValueError("Lista de comprovantes não pode ser vazia")
         if not comprovantes:
-            raise ValueError("Lista de comprovantes não pode ser vazia")
+            logger.warning("Lista de comprovantes vazia - apenas estratégias baseadas em regras funcionarão")
 
         if not self.estrategias:
             raise ConciliacaoError(

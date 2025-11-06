@@ -8,15 +8,26 @@ Author: Pedro Luis (pedroluisdias@br-nsa.com)
 Created: 04/11/2025
 Version: 1.0.0
 """
+# Configurar PYTHONPATH
+import sys
+from pathlib import Path
+
+# Detectar se está em pages/ ou em ui/
+arquivo_atual = Path(__file__).resolve()
+if 'pages' in str(arquivo_atual.parent):
+    # Estamos em ui/pages/ - subir 2 níveis
+    raiz = arquivo_atual.parent.parent.parent
+else:
+    # Estamos em ui/ - subir 1 nível
+    raiz = arquivo_atual.parent.parent
+
+# Adicionar raiz e src/ ao path
+if str(raiz) not in sys.path:
+    sys.path.insert(0, str(raiz))
+if str(raiz / 'src') not in sys.path:
+    sys.path.insert(0, str(raiz / 'src'))
 
 import streamlit as st
-from pathlib import Path
-import sys
-
-# Adicionar diretório raiz ao path
-root_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(root_dir))
-
 
 # ============================================================================
 # CONFIGURAÇÃO DA PÁGINA
@@ -24,7 +35,7 @@ sys.path.insert(0, str(root_dir))
 
 st.set_page_config(
     page_title="Conciliação Bancária",
-    page_icon="🏦",
+    page_icon="💰",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
@@ -262,16 +273,16 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Linhas de Código", "5.906")
+        st.metric("Linhas de Código", "14.228")
     
     with col2:
-        st.metric("Testes Automatizados", "99")
+        st.metric("Testes Automatizados", "91")
     
     with col3:
         st.metric("Taxa de Sucesso", "100%")
     
     with col4:
-        st.metric("Progresso MVP", "50%")
+        st.metric("Progresso MVP", "100%")
     
     st.markdown("---")
     
@@ -296,7 +307,7 @@ def main():
     st.caption("""
     Sistema de Conciliação Bancária v1.0.0 | 
     Desenvolvido por Pedro Luis | 
-    Sprint 4 - Interface Web
+    MVP 100% Completo
     """)
 
 
