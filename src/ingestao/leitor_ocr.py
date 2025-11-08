@@ -3,7 +3,7 @@
 import re
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from decimal import Decimal
 from datetime import datetime, date
 
@@ -41,57 +41,98 @@ class LeitorOCR:
             ),
         }
     
-    def ler_arquivo(self, caminho: str, pagina: int = 0) -> Optional[Comprovante]:
-        """Lê arquivo e extrai dados via OCR."""
+    def ler_arquivo(self, caminho: str) -> List[Comprovante]:
+        """
+        Lê arquivo e extrai dados via OCR.
+        
+        MUDANÇA IMPORTANTE: Agora retorna LISTA de comprovantes!
+        Para PDFs com múltiplas páginas, cada página vira um comprovante.
+        
+        Args:
+            caminho: Caminho do arquivo PDF ou imagem
+            
+        Returns:
+            Lista de comprovantes extraídos (vazia se erro)
+        """
         arquivo = Path(caminho)
         
         if not arquivo.exists():
             logger.error(f"Arquivo não encontrado: {caminho}")
-            return None
+            return []
         
         extensao = arquivo.suffix.lower()
         
         try:
             if extensao == '.pdf':
-                return self._ler_pdf(str(arquivo), pagina)
+                return self._ler_pdf_multiplas_paginas(str(arquivo))
             elif extensao in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']:
-                return self._ler_imagem(str(arquivo))
+                # Imagens retornam lista com 1 elemento
+                comp = self._ler_imagem(str(arquivo))
+                return [comp] if comp else []
             else:
                 logger.error(f"Formato não suportado: {extensao}")
-                return None
+                return []
         except Exception as e:
             logger.error(f"Erro ao processar {arquivo.name}: {e}")
-            return None
+            return []
     
-    def _ler_pdf(self, arquivo: str, pagina: int = 0) -> Optional[Comprovante]:
-        """Processa arquivo PDF e extrai dados via OCR."""
+    def _ler_pdf_multiplas_paginas(self, arquivo: str) -> List[Comprovante]:
+        """
+        Processa TODAS as páginas de um PDF.
+        
+        NOVO MÉTODO que substitui o antigo _ler_pdf!
+        """
         import tempfile
         import os
         
+        comprovantes = []
+        
         try:
-            imagens = convert_from_path(arquivo, first_page=pagina + 1, last_page=pagina + 1, dpi=300)
+            # Converter TODAS as páginas do PDF
+            logger.debug(f"Convertendo PDF: {Path(arquivo).name}")
+            imagens = convert_from_path(arquivo, dpi=300)
             
-            if not imagens:
-                logger.error(f"Não foi possível converter PDF: {arquivo}")
-                return None
+            logger.info(f"📄 PDF tem {len(imagens)} página(s)")
             
-            imagem = imagens[0]
-            
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
-                imagem.save(tmp.name, 'PNG')
-                temp_path = tmp.name
-            
-            try:
-                comprovante = self._processar_imagem(temp_path, arquivo)
-                return comprovante
-            finally:
+            # Processar cada página separadamente
+            for idx, imagem in enumerate(imagens, start=1):
                 try:
-                    os.unlink(temp_path)
-                except:
-                    pass
+                    # Criar arquivo temporário para a página
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                        imagem.save(tmp.name, 'PNG')
+                        temp_path = tmp.name
+                    
+                    try:
+                        # Criar nome único para cada página
+                        arquivo_base = Path(arquivo).stem
+                        arquivo_pagina = f"{arquivo_base}_pagina_{idx:02d}.pdf"
+                        
+                        # Processar imagem da página
+                        comprovante = self._processar_imagem(temp_path, arquivo_pagina)
+                        
+                        if comprovante:
+                            comprovantes.append(comprovante)
+                            logger.debug(f"  ✓ Página {idx}/{len(imagens)}: Extraído com sucesso")
+                        else:
+                            logger.warning(f"  ⚠️  Página {idx}/{len(imagens)}: Sem dados válidos")
+                    
+                    finally:
+                        # Limpar arquivo temporário
+                        try:
+                            os.unlink(temp_path)
+                        except:
+                            pass
+                
+                except Exception as e:
+                    logger.error(f"  ❌ Erro na página {idx}: {e}")
+                    continue
+            
+            logger.info(f"✓ Extraídos {len(comprovantes)}/{len(imagens)} comprovantes do PDF")
+            
         except Exception as e:
             logger.error(f"Erro ao processar PDF {arquivo}: {e}")
-            return None
+        
+        return comprovantes
     
     def _ler_imagem(self, arquivo: str) -> Optional[Comprovante]:
         """Processa arquivo de imagem via OCR."""

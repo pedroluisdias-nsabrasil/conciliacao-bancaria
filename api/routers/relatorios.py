@@ -4,24 +4,35 @@ Gerencia geração de relatórios Excel e PDF
 
 Autor: Pedro Luis
 Data: 06/11/2025
-Versão: 1.1.0 (Corrigida)
+Versão: 2.0.0 (Refatorado)
 
-Correções aplicadas:
-- Removida importação de variável inexistente 'ultimos_resultados'
-- Adicionada função para carregar resultados do arquivo JSON
-- Melhorado tratamento de erros
+Mudanças v2.0.0:
+- Agora usa GeradorExcel do src/relatorios/
+- Eliminado código duplicado
+- Suporte a Comprovantes Não Conciliados (Melhoria #4)
+- Melhor separação de responsabilidades
 """
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import logging
 import json
-from datetime import datetime
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
+import sys
+from datetime import datetime, date
+from decimal import Decimal
+
+# Adicionar src/ ao path
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+sys.path.insert(0, str(BASE_DIR / "src"))
+
+# ===== IMPORTS DO CORE =====
+from src.relatorios.gerador_excel import GeradorExcel
+from src.modelos.lancamento import Lancamento
+from src.modelos.comprovante import Comprovante
+from src.modelos.match import Match
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +42,6 @@ router = APIRouter()
 
 # ==================== DIRETÓRIOS ====================
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SAIDA_DIR = BASE_DIR / "dados" / "saida"
 SAIDA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -64,12 +74,96 @@ def carregar_resultados() -> Optional[Dict[str, Any]]:
         logger.error(f"❌ Erro ao carregar resultados: {e}")
         return None
 
+
+def reconstruir_objetos(resultados: Dict[str, Any]) -> tuple:
+    """
+    Reconstrói objetos Match, Lancamento e Comprovante do JSON
+    
+    Args:
+        resultados: Dicionário com resultados da conciliação
+        
+    Returns:
+        Tupla (matches, lancamentos_nao_conciliados, comprovantes_nao_conciliados)
+    """
+    matches = []
+    lancamentos_nao_conciliados = []
+    comprovantes_nao_conciliados = []
+    
+    # ===== RECONSTRUIR MATCHES =====
+    for match_dict in resultados.get('matches', []):
+        try:
+            # Reconstruir Lancamento
+            lanc_data = match_dict['lancamento']
+            lancamento = Lancamento(
+                data=date.fromisoformat(lanc_data['data']),
+                valor=Decimal(str(lanc_data['valor'])),
+                descricao=lanc_data['descricao'],
+                tipo='D'  # Placeholder
+            )
+            
+            # Reconstruir Comprovante (se existir)
+            comprovante = None
+            if match_dict['comprovante']:
+                comp_data = match_dict['comprovante']
+                comprovante = Comprovante(
+                    arquivo=match_dict.get('arquivo_comprovante', f"Comprovante {comp_data.get('numero', 'S/N')}"),  # ✅ CORRIGIDO
+                    valor=Decimal(str(comp_data['valor'])),
+                    data=date.fromisoformat(comp_data['data'])
+                )
+            
+            # Reconstruir Match
+            match = Match(
+                lancamento=lancamento,
+                comprovante=comprovante,
+                confianca=float(match_dict['confianca']) / 100,  # % → decimal
+                metodo=match_dict['tipo']
+            )
+            
+            matches.append(match)
+            
+        except Exception as e:
+            logger.warning(f"⚠️  Erro ao reconstruir match: {e}")
+            continue
+    
+    # ===== RECONSTRUIR LANÇAMENTOS NÃO CONCILIADOS =====
+    for lanc_dict in resultados.get('nao_conciliados', []):
+        try:
+            lancamento = Lancamento(
+                data=date.fromisoformat(lanc_dict['data']),
+                valor=Decimal(str(lanc_dict['valor'])),
+                descricao=lanc_dict['descricao'],
+                tipo='D'  # Placeholder
+            )
+            lancamentos_nao_conciliados.append(lancamento)
+        except Exception as e:
+            logger.warning(f"⚠️  Erro ao reconstruir lançamento não conciliado: {e}")
+            continue
+    
+    # ===== MANTER COMPROVANTES NÃO CONCILIADOS COMO DICT =====
+    # O GeradorExcel espera lista de dicts, não objetos Comprovante
+    comprovantes_nao_conciliados = resultados.get('comprovantes_nao_conciliados', [])
+    
+    logger.debug(
+        f"Objetos reconstruídos: {len(matches)} matches, "
+        f"{len(lancamentos_nao_conciliados)} não conciliados, "
+        f"{len(comprovantes_nao_conciliados)} comprovantes não conciliados"
+    )
+    
+    return matches, lancamentos_nao_conciliados, comprovantes_nao_conciliados
+
+
 # ==================== ENDPOINT: GERAR RELATÓRIO EXCEL ====================
 
 @router.get("/download")
 async def download_relatorio():
     """
     Gera e retorna relatório Excel da última conciliação
+    
+    Usa o GeradorExcel profissional do src/relatorios/ que inclui:
+    - Aba Resumo com estatísticas
+    - Aba Conciliados com formatação condicional
+    - Aba Não Conciliados
+    - Aba Comprovantes Não Conciliados (Melhoria #4)
     
     Returns:
         FileResponse com arquivo Excel
@@ -87,137 +181,31 @@ async def download_relatorio():
                 detail="Execute a conciliação antes de gerar o relatório"
             )
         
-        logger.info("📊 Gerando relatório Excel...")
+        logger.info("📊 Gerando relatório Excel com GeradorExcel...")
+        
+        # Reconstruir objetos a partir do JSON
+        matches, lanc_nao_conc, comp_nao_conc = reconstruir_objetos(ultimos_resultados)
         
         # Criar nome do arquivo com timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         nome_arquivo = f"relatorio_conciliacao_{timestamp}.xlsx"
         caminho_arquivo = SAIDA_DIR / nome_arquivo
         
-        # Criar workbook
-        wb = Workbook()
+        # ===== USAR GERADOR PROFISSIONAL =====
+        gerador = GeradorExcel()
         
-        # ===== ABA 1: RESUMO =====
-        ws_resumo = wb.active
-        ws_resumo.title = "Resumo"
-        
-        # Cabeçalho
-        ws_resumo['A1'] = "RELATÓRIO DE CONCILIAÇÃO BANCÁRIA"
-        ws_resumo['A1'].font = Font(size=16, bold=True, color="FFFFFF")
-        ws_resumo['A1'].fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
-        ws_resumo['A1'].alignment = Alignment(horizontal="center", vertical="center")
-        ws_resumo.merge_cells('A1:D1')
-        ws_resumo.row_dimensions[1].height = 30
-        
-        # Data/hora
-        ws_resumo['A2'] = f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"
-        ws_resumo['A2'].font = Font(italic=True)
-        ws_resumo.merge_cells('A2:D2')
-        
-        # Estatísticas
-        stats = ultimos_resultados['estatisticas']
-        
-        linha = 4
-        estatisticas_labels = [
-            ("Total de Lançamentos:", stats['total_lancamentos']),
-            ("Total de Comprovantes:", stats['total_comprovantes']),
-            ("Matches Encontrados:", stats['total_matches']),
-            ("Taxa de Conciliação:", f"{stats['taxa_conciliacao']}%"),
-            ("Confiança Média:", f"{stats['confianca_media']}%"),
-            ("Auto-aprovados:", stats['auto_aprovados']),
-            ("Não Conciliados:", stats['nao_conciliados']),
-        ]
-        
-        for label, valor in estatisticas_labels:
-            ws_resumo[f'A{linha}'] = label
-            ws_resumo[f'A{linha}'].font = Font(bold=True)
-            ws_resumo[f'B{linha}'] = valor
-            linha += 1
-        
-        # Ajustar larguras
-        ws_resumo.column_dimensions['A'].width = 30
-        ws_resumo.column_dimensions['B'].width = 20
-        
-        # ===== ABA 2: CONCILIADOS =====
-        ws_conciliados = wb.create_sheet("Conciliados")
-        
-        # Cabeçalhos
-        headers = ["Data Lanç.", "Valor", "Descrição", "Comprovante", "Confiança", "Tipo"]
-        for col, header in enumerate(headers, 1):
-            cell = ws_conciliados.cell(1, col, header)
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.border = Border(
-                left=Side(style='thin'),
-                right=Side(style='thin'),
-                top=Side(style='thin'),
-                bottom=Side(style='thin')
-            )
-        
-        # Dados
-        matches = ultimos_resultados['matches']
-        for idx, match in enumerate(matches, 2):
-            ws_conciliados[f'A{idx}'] = match['lancamento']['data']
-            ws_conciliados[f'B{idx}'] = match['lancamento']['valor']
-            ws_conciliados[f'B{idx}'].number_format = 'R$ #,##0.00'
-            ws_conciliados[f'C{idx}'] = match['lancamento']['descricao']
-            
-            # Comprovante
-            if match['comprovante']:
-                comp_info = f"Nº {match['comprovante']['numero']}" if match['comprovante']['numero'] else "S/N"
-            else:
-                comp_info = "Regra Automática"
-            ws_conciliados[f'D{idx}'] = comp_info
-            
-            ws_conciliados[f'E{idx}'] = f"{match['confianca']}%"
-            ws_conciliados[f'F{idx}'] = match['tipo']
-            
-            # Colorir confiança
-            confianca = match['confianca']
-            if confianca >= 90:
-                ws_conciliados[f'E{idx}'].fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-            elif confianca >= 70:
-                ws_conciliados[f'E{idx}'].fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
-            else:
-                ws_conciliados[f'E{idx}'].fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
-        
-        # Ajustar larguras
-        ws_conciliados.column_dimensions['A'].width = 12
-        ws_conciliados.column_dimensions['B'].width = 15
-        ws_conciliados.column_dimensions['C'].width = 50
-        ws_conciliados.column_dimensions['D'].width = 20
-        ws_conciliados.column_dimensions['E'].width = 12
-        ws_conciliados.column_dimensions['F'].width = 15
-        
-        # ===== ABA 3: NÃO CONCILIADOS =====
-        ws_nao_conciliados = wb.create_sheet("Não Conciliados")
-        
-        # Cabeçalhos
-        headers_nc = ["Data", "Valor", "Descrição"]
-        for col, header in enumerate(headers_nc, 1):
-            cell = ws_nao_conciliados.cell(1, col, header)
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = PatternFill(start_color="C00000", end_color="C00000", fill_type="solid")
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-        
-        # Dados
-        nao_conciliados = ultimos_resultados['nao_conciliados']
-        for idx, lanc in enumerate(nao_conciliados, 2):
-            ws_nao_conciliados[f'A{idx}'] = lanc['data']
-            ws_nao_conciliados[f'B{idx}'] = lanc['valor']
-            ws_nao_conciliados[f'B{idx}'].number_format = 'R$ #,##0.00'
-            ws_nao_conciliados[f'C{idx}'] = lanc['descricao']
-        
-        # Ajustar larguras
-        ws_nao_conciliados.column_dimensions['A'].width = 12
-        ws_nao_conciliados.column_dimensions['B'].width = 15
-        ws_nao_conciliados.column_dimensions['C'].width = 50
-        
-        # Salvar arquivo
-        wb.save(caminho_arquivo)
+        arquivo_gerado = gerador.gerar(
+            matches=matches,
+            lancamentos_nao_conciliados=lanc_nao_conc,
+            comprovantes_nao_conciliados=comp_nao_conc,  # ✅ MELHORIA #4
+            estatisticas=ultimos_resultados['estatisticas'],
+            arquivo_saida=str(caminho_arquivo)
+        )
         
         logger.info(f"✅ Relatório gerado: {nome_arquivo}")
+        logger.info(f"   📊 {len(matches)} matches")
+        logger.info(f"   📊 {len(lanc_nao_conc)} não conciliados")
+        logger.info(f"   📊 {len(comp_nao_conc)} comprovantes não conciliados")
         
         # Retornar arquivo para download
         return FileResponse(
@@ -231,6 +219,7 @@ async def download_relatorio():
     except Exception as e:
         logger.error(f"❌ Erro ao gerar relatório: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # ==================== ENDPOINT: LISTAR RELATÓRIOS ====================
 

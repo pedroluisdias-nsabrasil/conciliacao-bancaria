@@ -1,0 +1,159 @@
+# ===================================
+# .gitignore - Sistema de Conciliação Bancária
+# ===================================
+
+# ===================================
+# 1. DADOS SENSÍVEIS (NUNCA COMMITAR)
+# ===================================
+# Dados do usuário
+dados/entrada/**
+dados/saida/**
+!dados/entrada/.gitkeep
+!dados/saida/.gitkeep
+
+# Arquivos CSV, PDF, Excel do usuário
+*.csv
+*.pdf
+*.xlsx
+*.xlsm
+
+# Logs
+logs/**
+*.log
+!logs/.gitkeep
+
+# Credenciais
+config/gcp-credentials.json
+config/api-keys.json
+.env
+.env.local
+secrets.yaml
+
+# ===================================
+# 2. AMBIENTE PYTHON
+# ===================================
+# Virtual environment
+venv/
+env/
+ENV/
+.venv
+.env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ===================================
+# 3. IDEs e EDITORES
+# ===================================
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Spyder
+.spyderproject
+.spyproject
+
+# ===================================
+# 4. SISTEMA OPERACIONAL
+# ===================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# ===================================
+# 5. TEMPORÁRIOS
+# ===================================
+# Arquivos temporários
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# Cache
+.cache/
+*.cache
+
+# ===================================
+# 6. MODELOS ML (se ficar muito grande)
+# ===================================
+# Opcional: modelos treinados grandes
+# src/ml/modelos/*.pkl
+# src/ml/modelos/*.joblib
+# src/ml/dados/*.parquet
+
+# ===================================
+# 7. DOCUMENTAÇÃO GERADA
+# ===================================
+# HTML gerado (pode ser regenerado)
+# docs/_build/
+# docs/html/
+
+# ===================================
+# ARQUIVOS A MANTER (exemplos)
+# ===================================
+# Manter arquivos de exemplo (prefixo 'exemplo_')
+!exemplo_*.csv
+!exemplo_*.pdf
+!exemplo_*.yaml
+
+# Manter estrutura de pastas
+!dados/entrada/.gitkeep
+!dados/saida/.gitkeep
+!logs/.gitkeep
+!config/.gitkeep

@@ -1,13 +1,13 @@
-"""
+﻿"""
 Testes automatizados para o GeradorExcel.
 
-Este módulo testa todas as funcionalidades do gerador de relatórios Excel:
-- Criação básica de arquivos
+Este mÃ³dulo testa todas as funcionalidades do gerador de relatÃ³rios Excel:
+- CriaÃ§Ã£o bÃ¡sica de arquivos
 - Estrutura de 3 abas
-- Formatação condicional
-- Valores monetários
+- FormataÃ§Ã£o condicional
+- Valores monetÃ¡rios
 - Tratamento de erros
-- Validações de dados
+- ValidaÃ§Ãµes de dados
 
 Para executar:
     pytest tests/test_relatorios/test_gerador_excel.py -v
@@ -16,7 +16,7 @@ Para executar:
 Autor:
     Pedro Luis (pedroluisdias@br-nsa.com)
 
-Versão:
+VersÃ£o:
     1.0.0 - Sprint 5 (Novembro 2025)
 """
 
@@ -41,10 +41,10 @@ from src.relatorios.gerador_excel import GeradorExcel
 @pytest.fixture
 def lancamentos():
     """
-    Cria lançamentos de exemplo para testes.
+    Cria lanÃ§amentos de exemplo para testes.
 
     Returns:
-        Lista de 3 lançamentos simulados com dataclass ou objeto similar
+        Lista de 3 lanÃ§amentos simulados com dataclass ou objeto similar
     """
     from dataclasses import dataclass
 
@@ -109,7 +109,7 @@ def matches(lancamentos, comprovantes):
     Cria matches de exemplo para testes.
 
     Returns:
-        Lista de 2 matches simulados com diferentes níveis de confiança
+        Lista de 2 matches simulados com diferentes nÃ­veis de confianÃ§a
     """
     from dataclasses import dataclass
 
@@ -139,10 +139,10 @@ def matches(lancamentos, comprovantes):
 @pytest.fixture
 def estatisticas():
     """
-    Cria estatísticas de exemplo para testes.
+    Cria estatÃ­sticas de exemplo para testes.
 
     Returns:
-        Dicionário com estatísticas simuladas
+        DicionÃ¡rio com estatÃ­sticas simuladas
     """
     return {
         "total_lancamentos": 3,
@@ -154,15 +154,15 @@ def estatisticas():
     }
 
 
-# ========== TESTES BÁSICOS ==========
+# ========== TESTES BÃSICOS ==========
 
 
 def test_criar_gerador_excel():
-    """Testa criação básica do GeradorExcel."""
+    """Testa criaÃ§Ã£o bÃ¡sica do GeradorExcel."""
     gerador = GeradorExcel()
 
     assert gerador is not None
-    assert gerador.workbook is None  # Workbook só é criado ao gerar
+    assert gerador.workbook is None  # Workbook sÃ³ Ã© criado ao gerar
     assert gerador.COR_HEADER == "4472C4"
     assert gerador.COR_AUTO_APROVADO == "C6EFCE"
     assert gerador.COR_REVISAR == "FFEB9C"
@@ -170,14 +170,14 @@ def test_criar_gerador_excel():
 
 
 def test_criar_excel_basico(matches, lancamentos, estatisticas, tmp_path):
-    """Testa geração básica de arquivo Excel."""
+    """Testa geraÃ§Ã£o bÃ¡sica de arquivo Excel."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     resultado = gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
@@ -195,7 +195,7 @@ def test_excel_tem_3_abas(matches, lancamentos, estatisticas, tmp_path):
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
@@ -204,37 +204,37 @@ def test_excel_tem_3_abas(matches, lancamentos, estatisticas, tmp_path):
     assert len(wb.sheetnames) == 3
     assert "Resumo" in wb.sheetnames
     assert "Conciliados" in wb.sheetnames
-    assert "Não Conciliados" in wb.sheetnames
+    assert "NÃ£o Conciliados" in wb.sheetnames
 
     # Verificar ordem das abas
     assert wb.sheetnames[0] == "Resumo"
     assert wb.sheetnames[1] == "Conciliados"
-    assert wb.sheetnames[2] == "Não Conciliados"
+    assert wb.sheetnames[2] == "NÃ£o Conciliados"
 
 
 # ========== TESTES DA ABA RESUMO ==========
 
 
 def test_aba_resumo_tem_titulo(matches, lancamentos, estatisticas, tmp_path):
-    """Testa que aba Resumo tem título correto."""
+    """Testa que aba Resumo tem tÃ­tulo correto."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
     ws = wb["Resumo"]
 
-    # Verificar título
-    assert "CONCILIAÇÃO" in ws["A1"].value.upper()
-    assert "BANCÁRIA" in ws["A1"].value.upper() or "BANCARIA" in ws["A1"].value.upper()
+    # Verificar tÃ­tulo
+    assert "CONCILIAÃ‡ÃƒO" in ws["A1"].value.upper()
+    assert "BANCÃRIA" in ws["A1"].value.upper() or "BANCARIA" in ws["A1"].value.upper()
 
-    # Verificar formatação do título
+    # Verificar formataÃ§Ã£o do tÃ­tulo
     assert ws["A1"].font.size == 16
     assert ws["A1"].font.bold is True
 
@@ -247,76 +247,76 @@ def test_aba_resumo_tem_kpis(matches, lancamentos, estatisticas, tmp_path):
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
     ws = wb["Resumo"]
 
-    # Verificar que KPIs estão presentes
-    # Buscar valores nas células B4 a B9 (onde ficam os valores dos KPIs)
+    # Verificar que KPIs estÃ£o presentes
+    # Buscar valores nas cÃ©lulas B4 a B9 (onde ficam os valores dos KPIs)
     valores_celulas = [ws[f"B{i}"].value for i in range(4, 10)]
 
-    # Verificar que estatísticas estão presentes
-    assert 3 in valores_celulas or "3" in str(valores_celulas)  # Total lançamentos
+    # Verificar que estatÃ­sticas estÃ£o presentes
+    assert 3 in valores_celulas or "3" in str(valores_celulas)  # Total lanÃ§amentos
     assert any(
         "66" in str(v) or "67" in str(v) for v in valores_celulas
-    )  # Taxa conciliação
+    )  # Taxa conciliaÃ§Ã£o
 
 
 def test_aba_resumo_tem_cores_kpis(matches, lancamentos, estatisticas, tmp_path):
-    """Testa que KPIs têm cores corretas na aba Resumo."""
+    """Testa que KPIs tÃªm cores corretas na aba Resumo."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
     ws = wb["Resumo"]
 
-    # Verificar que pelo menos uma célula tem cor de fundo
-    # (auto-aprovados, revisar, ou não conciliados)
+    # Verificar que pelo menos uma cÃ©lula tem cor de fundo
+    # (auto-aprovados, revisar, ou nÃ£o conciliados)
     cores_encontradas = []
     for i in range(4, 10):
         cor = ws[f"B{i}"].fill.fgColor
         if cor and hasattr(cor, "rgb"):
             cores_encontradas.append(cor.rgb)
 
-    assert len(cores_encontradas) > 0  # Pelo menos uma célula colorida
+    assert len(cores_encontradas) > 0  # Pelo menos uma cÃ©lula colorida
 
 
 # ========== TESTES DA ABA CONCILIADOS ==========
 
 
 def test_aba_conciliados_tem_headers(matches, lancamentos, estatisticas, tmp_path):
-    """Testa que aba Conciliados tem cabeçalhos corretos."""
+    """Testa que aba Conciliados tem cabeÃ§alhos corretos."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
     ws = wb["Conciliados"]
 
-    # Verificar cabeçalhos
+    # Verificar cabeÃ§alhos
     headers_esperados = [
         "Data",
         "Tipo",
         "Valor",
-        "Descrição",
+        "DescriÃ§Ã£o",
         "Comprovante",
-        "Confiança",
+        "ConfianÃ§a",
         "Status",
     ]
 
@@ -326,46 +326,46 @@ def test_aba_conciliados_tem_headers(matches, lancamentos, estatisticas, tmp_pat
             header_real == header_esperado
         ), f"Coluna {col}: esperado '{header_esperado}', obtido '{header_real}'"
 
-    # Verificar formatação do cabeçalho
+    # Verificar formataÃ§Ã£o do cabeÃ§alho
     assert ws.cell(1, 1).font.bold is True
     assert ws.cell(1, 1).font.color.rgb in ["FFFFFF", "00FFFFFF"]  # Texto branco
 
 
 def test_formatacao_condicional_cores(matches, lancamentos, estatisticas, tmp_path):
-    """Testa cores da formatação condicional em Conciliados."""
+    """Testa cores da formataÃ§Ã£o condicional em Conciliados."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
     ws = wb["Conciliados"]
 
-    # Verificar linha 2 (match com confiança 0.95 - deve ser verde)
+    # Verificar linha 2 (match com confianÃ§a 0.95 - deve ser verde)
     cor_row2 = ws["A2"].fill.fgColor
     if hasattr(cor_row2, "rgb"):
         assert cor_row2.rgb in [gerador.COR_AUTO_APROVADO, "FFC6EFCE", "00C6EFCE"]
 
-    # Verificar linha 3 (match com confiança 0.75 - deve ser amarelo)
+    # Verificar linha 3 (match com confianÃ§a 0.75 - deve ser amarelo)
     cor_row3 = ws["A3"].fill.fgColor
     if hasattr(cor_row3, "rgb"):
         assert cor_row3.rgb in [gerador.COR_REVISAR, "FFFFEB9C", "00FFEB9C"]
 
 
 def test_valores_monetarios_formatados(matches, lancamentos, estatisticas, tmp_path):
-    """Testa formatação de valores monetários."""
+    """Testa formataÃ§Ã£o de valores monetÃ¡rios."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
@@ -378,42 +378,42 @@ def test_valores_monetarios_formatados(matches, lancamentos, estatisticas, tmp_p
 
 
 def test_filtros_automaticos(matches, lancamentos, estatisticas, tmp_path):
-    """Testa que filtros automáticos estão habilitados."""
+    """Testa que filtros automÃ¡ticos estÃ£o habilitados."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
     ws = wb["Conciliados"]
 
-    # Verificar que auto_filter está definido
+    # Verificar que auto_filter estÃ¡ definido
     assert ws.auto_filter.ref is not None
     assert "A1" in ws.auto_filter.ref
 
 
-# ========== TESTES DA ABA NÃO CONCILIADOS ==========
+# ========== TESTES DA ABA NÃƒO CONCILIADOS ==========
 
 
 def test_aba_nao_conciliados_vermelha(matches, lancamentos, estatisticas, tmp_path):
-    """Testa que não conciliados ficam vermelhos."""
+    """Testa que nÃ£o conciliados ficam vermelhos."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
-    ws = wb["Não Conciliados"]
+    ws = wb["NÃ£o Conciliados"]
 
     # Verificar cor vermelha na primeira linha de dados
     cor = ws["A2"].fill.fgColor
@@ -422,22 +422,22 @@ def test_aba_nao_conciliados_vermelha(matches, lancamentos, estatisticas, tmp_pa
 
 
 def test_aba_nao_conciliados_headers(matches, lancamentos, estatisticas, tmp_path):
-    """Testa cabeçalhos da aba Não Conciliados."""
+    """Testa cabeÃ§alhos da aba NÃ£o Conciliados."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
-    ws = wb["Não Conciliados"]
+    ws = wb["NÃ£o Conciliados"]
 
-    # Verificar cabeçalhos
-    headers_esperados = ["Data", "Tipo", "Valor", "Descrição", "Observações"]
+    # Verificar cabeÃ§alhos
+    headers_esperados = ["Data", "Tipo", "Valor", "DescriÃ§Ã£o", "ObservaÃ§Ãµes"]
 
     for col, header_esperado in enumerate(headers_esperados, start=1):
         header_real = ws.cell(1, col).value
@@ -445,63 +445,63 @@ def test_aba_nao_conciliados_headers(matches, lancamentos, estatisticas, tmp_pat
 
 
 def test_nao_conciliados_mensagem_quando_vazio(matches, estatisticas, tmp_path):
-    """Testa mensagem quando não há lançamentos não conciliados."""
+    """Testa mensagem quando nÃ£o hÃ¡ lanÃ§amentos nÃ£o conciliados."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[],  # Lista vazia
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
-    ws = wb["Não Conciliados"]
+    ws = wb["NÃ£o Conciliados"]
 
     # Verificar mensagem positiva
     mensagem = ws["A2"].value
-    assert "Parabéns" in mensagem or "conciliados" in mensagem
+    assert "ParabÃ©ns" in mensagem or "conciliados" in mensagem
 
 
-# ========== TESTES DE VALIDAÇÃO E ERROS ==========
+# ========== TESTES DE VALIDAÃ‡ÃƒO E ERROS ==========
 
 
 def test_erro_dados_vazios():
-    """Testa erro quando não há dados."""
+    """Testa erro quando nÃ£o hÃ¡ dados."""
     gerador = GeradorExcel()
 
     with pytest.raises(ValueError, match="Nenhum dado"):
         gerador.gerar(
             matches=[],
             lancamentos_nao_conciliados=[],
-            estatisticas={},
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            {},
             arquivo_saida="test.xlsx",
         )
 
 
 def test_erro_estatisticas_faltando(matches, lancamentos):
-    """Testa erro quando estatísticas obrigatórias estão faltando."""
+    """Testa erro quando estatÃ­sticas obrigatÃ³rias estÃ£o faltando."""
     gerador = GeradorExcel()
 
-    with pytest.raises(KeyError, match="obrigatória"):
+    with pytest.raises(KeyError, match="obrigatÃ³ria"):
         gerador.gerar(
             matches=matches,
             lancamentos_nao_conciliados=[lancamentos[2]],
-            estatisticas={},  # Estatísticas vazias
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            {},  # EstatÃ­sticas vazias
             arquivo_saida="test.xlsx",
         )
 
 
 def test_cria_diretorios_se_necessario(matches, lancamentos, estatisticas, tmp_path):
-    """Testa criação de diretórios."""
+    """Testa criaÃ§Ã£o de diretÃ³rios."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "subdir" / "subdir2" / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
@@ -509,14 +509,14 @@ def test_cria_diretorios_se_necessario(matches, lancamentos, estatisticas, tmp_p
     assert arquivo.parent.exists()
 
 
-# ========== TESTES DE MÉTODOS AUXILIARES ==========
+# ========== TESTES DE MÃ‰TODOS AUXILIARES ==========
 
 
 def test_cor_por_confianca():
-    """Testa método _cor_por_confianca."""
+    """Testa mÃ©todo _cor_por_confianca."""
     gerador = GeradorExcel()
 
-    # Auto-aprovado (≥ 0.90)
+    # Auto-aprovado (â‰¥ 0.90)
     assert gerador._cor_por_confianca(0.95) == gerador.COR_AUTO_APROVADO
     assert gerador._cor_por_confianca(0.90) == gerador.COR_AUTO_APROVADO
 
@@ -524,71 +524,71 @@ def test_cor_por_confianca():
     assert gerador._cor_por_confianca(0.75) == gerador.COR_REVISAR
     assert gerador._cor_por_confianca(0.60) == gerador.COR_REVISAR
 
-    # Baixa confiança (< 0.60)
+    # Baixa confianÃ§a (< 0.60)
     assert gerador._cor_por_confianca(0.50) == "FFFFFF"
     assert gerador._cor_por_confianca(0.10) == "FFFFFF"
 
 
 def test_larguras_colunas_ajustadas(matches, lancamentos, estatisticas, tmp_path):
-    """Testa que colunas têm largura ajustada."""
+    """Testa que colunas tÃªm largura ajustada."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
     ws = wb["Conciliados"]
 
-    # Verificar que colunas têm largura > 0
+    # Verificar que colunas tÃªm largura > 0
     assert ws.column_dimensions["A"].width > 0
-    assert ws.column_dimensions["D"].width > 0  # Coluna Descrição deve ser mais larga
+    assert ws.column_dimensions["D"].width > 0  # Coluna DescriÃ§Ã£o deve ser mais larga
 
 
 def test_bordas_aplicadas(matches, lancamentos, estatisticas, tmp_path):
-    """Testa que bordas estão aplicadas nas tabelas."""
+    """Testa que bordas estÃ£o aplicadas nas tabelas."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "test.xlsx"
 
     gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
     wb = load_workbook(arquivo)
     ws = wb["Conciliados"]
 
-    # Verificar que célula tem borda
+    # Verificar que cÃ©lula tem borda
     cell = ws["A2"]
     assert cell.border is not None
     assert cell.border.left.style is not None
 
 
-# ========== TESTE DE INTEGRAÇÃO ==========
+# ========== TESTE DE INTEGRAÃ‡ÃƒO ==========
 
 
 def test_integracao_completa(matches, lancamentos, estatisticas, tmp_path):
-    """Teste de integração completo do GeradorExcel."""
+    """Teste de integraÃ§Ã£o completo do GeradorExcel."""
     gerador = GeradorExcel()
     arquivo = tmp_path / "relatorio_completo.xlsx"
 
-    # Gerar relatório completo
+    # Gerar relatÃ³rio completo
     resultado = gerador.gerar(
         matches=matches,
         lancamentos_nao_conciliados=[lancamentos[2]],
-        estatisticas=estatisticas,
+            comprovantes_nao_conciliados=[],  # Melhoria #4estatisticas=            estatisticas,
         arquivo_saida=str(arquivo),
     )
 
-    # Verificações gerais
+    # VerificaÃ§Ãµes gerais
     assert Path(resultado).exists()
-    assert Path(resultado).stat().st_size > 5000  # Arquivo deve ter tamanho razoável
+    assert Path(resultado).stat().st_size > 5000  # Arquivo deve ter tamanho razoÃ¡vel
 
     # Carregar e verificar estrutura
     wb = load_workbook(arquivo)
@@ -606,13 +606,14 @@ def test_integracao_completa(matches, lancamentos, estatisticas, tmp_path):
     assert ws_conc["A1"].value == "Data"
     assert ws_conc["A2"].value is not None  # Primeira linha de dados
 
-    # Aba Não Conciliados tem dados
-    ws_nao_conc = wb["Não Conciliados"]
+    # Aba NÃ£o Conciliados tem dados
+    ws_nao_conc = wb["NÃ£o Conciliados"]
     assert ws_nao_conc["A1"].value == "Data"
     assert ws_nao_conc["A2"].value is not None
 
 
-# ========== EXECUÇÃO DOS TESTES ==========
+# ========== EXECUÃ‡ÃƒO DOS TESTES ==========
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
+

@@ -2,8 +2,8 @@
 Gerador de relatórios Excel profissionais para conciliação bancária.
 
 Este módulo implementa a classe GeradorExcel que cria relatórios Excel (.xlsx) com:
-- 4 abas (Resumo, Conciliados, Não Conciliados, Comprovantes Não Conciliados)
-- Formatação condicional por status (verde/amarelo/vermelho/laranja)
+- 3 abas (Resumo, Conciliados, Não Conciliados)
+- Formatação condicional por status (verde/amarelo/vermelho)
 - Cabeçalhos destacados e bordas profissionais
 - Filtros automáticos e fórmulas
 - Colunas auto-ajustadas
@@ -28,7 +28,6 @@ Exemplo de uso:
     >>> arquivo = gerador.gerar(
     ...     matches=lista_matches,
     ...     lancamentos_nao_conciliados=lista_nao_conc,
-    ...     comprovantes_nao_conciliados=lista_comp_nao_conc,
     ...     estatisticas=stats,
     ...     arquivo_saida="dados/saida/relatorio.xlsx"
     ... )
@@ -38,11 +37,7 @@ Autor:
     Pedro Luis (pedroluisdias@br-nsa.com)
 
 Versão:
-    1.1.0 - Melhoria #4 (Novembro 2025)
-    
-Changelog:
-    1.1.0 - Adicionada aba "Comprovantes Não Conciliados"
-    1.0.0 - Versão inicial com 3 abas
+    1.0.0 - Sprint 5 (Novembro 2025)
 """
 
 from decimal import Decimal
@@ -64,7 +59,7 @@ class GeradorExcel:
     Gera relatórios Excel profissionais para conciliação bancária.
 
     Características:
-        - 4 abas organizadas (Resumo, Conciliados, Não Conciliados, Comprovantes Não Conciliados)
+        - 3 abas organizadas (Resumo, Conciliados, Não Conciliados)
         - Formatação condicional automática baseada em confiança
         - Cabeçalhos destacados com fundo azul e texto branco
         - Filtros automáticos em todas as tabelas
@@ -79,14 +74,12 @@ class GeradorExcel:
         - Auto-aprovado: Verde claro (#C6EFCE) - confiança ≥ 90%
         - Revisar: Amarelo claro (#FFEB9C) - confiança 60-89%
         - Não conciliado: Vermelho claro (#FFC7CE) - sem match
-        - Comprovante não conciliado: Laranja claro (#FFE6CC) - alerta
 
     Exemplo:
         >>> gerador = GeradorExcel()
         >>> arquivo = gerador.gerar(
         ...     matches=matches,
         ...     lancamentos_nao_conciliados=lanc_nao_conc,
-        ...     comprovantes_nao_conciliados=comp_nao_conc,
         ...     estatisticas=stats,
         ...     arquivo_saida="relatorio.xlsx"
         ... )
@@ -113,12 +106,11 @@ class GeradorExcel:
         self,
         matches: List[Any],
         lancamentos_nao_conciliados: List[Any],
-        comprovantes_nao_conciliados: List[Any],
         estatisticas: Dict[str, Any],
         arquivo_saida: str,
     ) -> str:
         """
-        Gera relatório Excel completo com 4 abas.
+        Gera relatório Excel completo com 3 abas.
 
         Fluxo de geração:
             1. Valida dados de entrada
@@ -126,14 +118,12 @@ class GeradorExcel:
             3. Cria aba "Resumo" com estatísticas e KPIs
             4. Cria aba "Conciliados" com todos os matches
             5. Cria aba "Não Conciliados" com lançamentos sem match
-            6. Cria aba "Comprovantes Não Conciliados" com comprovantes sem match
-            7. Remove aba padrão do Excel
-            8. Salva arquivo no disco
+            6. Remove aba padrão do Excel
+            7. Salva arquivo no disco
 
         Args:
             matches: Lista de objetos Match encontrados pela conciliação
             lancamentos_nao_conciliados: Lista de Lancamento sem match
-            comprovantes_nao_conciliados: Lista de Comprovante sem match
             estatisticas: Dicionário com estatísticas da conciliação:
                 - total_lancamentos (int): Total de lançamentos processados
                 - auto_aprovados (int): Matches com confiança ≥ 90%
@@ -160,7 +150,7 @@ class GeradorExcel:
             ...     'taxa_conciliacao': 80.0,
             ...     'tempo_execucao': 1.5
             ... }
-            >>> arquivo = gerador.gerar(matches, lanc_nao_conc, comp_nao_conc, stats, "rel.xlsx")
+            >>> arquivo = gerador.gerar(matches, lanc_nao_conc, stats, "rel.xlsx")
             >>> print(arquivo)  # C:\\conciliacao-bancaria\\dados\\saida\\rel.xlsx
         """
         logger.info("Iniciando geração de relatório Excel...")
@@ -189,20 +179,15 @@ class GeradorExcel:
             self.workbook = Workbook()
             logger.debug("Workbook criado")
 
-            # Criar as 4 abas na ordem
+            # Criar as 3 abas na ordem
             self._criar_aba_resumo(estatisticas, matches, lancamentos_nao_conciliados)
             logger.debug("Aba 'Resumo' criada")
 
             self._criar_aba_conciliados(matches)
             logger.debug("Aba 'Conciliados' criada")
-            
+
             self._criar_aba_nao_conciliados(lancamentos_nao_conciliados)
             logger.debug("Aba 'Não Conciliados' criada")
-
-            # NOVA ABA: Comprovantes Não Conciliados
-            if comprovantes_nao_conciliados:
-                self._criar_aba_comprovantes_nao_conciliados(comprovantes_nao_conciliados)
-                logger.debug("Aba 'Comprovantes Não Conciliados' criada")
 
             # Remover aba padrão do Excel ("Sheet")
             if "Sheet" in self.workbook.sheetnames:
@@ -481,143 +466,21 @@ class GeradorExcel:
 
         logger.debug(f"Aba 'Não Conciliados' criada com {len(lancamentos)} linhas")
 
-    def _criar_aba_comprovantes_nao_conciliados(self, comprovantes: List[Any]) -> None:
-        """
-        Cria aba "Comprovantes Não Conciliados" com comprovantes sem match.
-        
-        Lista todos os comprovantes (PDFs) que foram processados via OCR
-        mas não foram usados em nenhum match de conciliação.
-        
-        Estrutura da tabela:
-            Coluna A: Arquivo Origem (nome do PDF)
-            Coluna B: Data Comprovante (DD/MM/AAAA)
-            Coluna C: Valor (formatado como R$)
-            Coluna D: Nº Documento
-            Coluna E: Beneficiário
-        
-        Formatação aplicada:
-            - Cabeçalho: Laranja escuro (#FF6600) com texto branco
-            - Todas as linhas: Laranja claro (#FFE6CC) indicando alerta
-            - Valores: Formato R$ #,##0.00
-            - Datas: Formato DD/MM/AAAA
-            - Bordas: Todas as células da tabela
-            - Filtros: Automáticos em todas as colunas
-        
-        Args:
-            comprovantes: Lista de dicionários com dados dos comprovantes
-        """
-        ws = self.workbook.create_sheet("Comprovantes Não Conciliados")
-        logger.debug(
-            f"Criando aba 'Comprovantes Não Conciliados' com {len(comprovantes)} comprovantes"
-        )
-        
-        # ===== CABEÇALHO PRINCIPAL =====
-        ws["A1"] = "COMPROVANTES NÃO CONCILIADOS"
-        ws["A1"].font = Font(size=14, bold=True, color="FF6600")
-        ws["A1"].alignment = Alignment(horizontal="left")
-        
-        # ===== SUBTÍTULOS (RESUMO) =====
-        # Calcular valor total
-        total_valor = sum(float(c.get('valor', 0)) for c in comprovantes)
-        
-        ws["A2"] = f"Total: {len(comprovantes)} comprovantes sem correspondência no extrato bancário"
-        ws["A2"].font = Font(size=10, italic=True)
-        
-        ws["A3"] = f"Valor Total: R$ {total_valor:,.2f}"
-        ws["A3"].font = Font(size=10, bold=True)
-        ws["A3"].fill = PatternFill(start_color="FFCC99", end_color="FFCC99", fill_type="solid")
-        
-        # Linha 4 fica vazia
-        
-        # ===== CABEÇALHOS DA TABELA (LINHA 5) =====
-        headers = [
-            "Arquivo Origem",
-            "Data Comprovante",
-            "Valor (R$)",
-            "Nº Documento",
-            "Beneficiário"
-        ]
-        
-        for col_idx, header in enumerate(headers, 1):
-            cell = ws.cell(row=5, column=col_idx, value=header)
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = PatternFill(start_color="FF6600", end_color="FF6600", fill_type="solid")
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-        
-        # ===== DADOS DA TABELA (COMEÇANDO NA LINHA 6) =====
-        for row_idx, comp in enumerate(comprovantes, 6):
-            
-            # Coluna A: Arquivo
-            ws.cell(row=row_idx, column=1, value=comp.get('arquivo', 'N/A'))
-            
-            # Coluna B: Data
-            data_str = comp.get('data', None)
-            if data_str:
-                # Converter ISO para DD/MM/AAAA
-                try:
-                    data_obj = datetime.fromisoformat(data_str)
-                    data_formatada = data_obj.strftime("%d/%m/%Y")
-                except:
-                    data_formatada = data_str
-            else:
-                data_formatada = "Data não identificada"
-            ws.cell(row=row_idx, column=2, value=data_formatada)
-            
-            # Coluna C: Valor
-            cell_valor = ws.cell(row=row_idx, column=3, value=float(comp.get('valor', 0)))
-            cell_valor.number_format = 'R$ #,##0.00'
-            cell_valor.alignment = Alignment(horizontal="right")
-            
-            # Coluna D: Nº Documento
-            numero = comp.get('numero', 'N/A')
-            ws.cell(row=row_idx, column=4, value=numero if numero else 'N/A')
-            
-            # Coluna E: Beneficiário
-            beneficiario = comp.get('beneficiario', 'Não identificado')
-            ws.cell(row=row_idx, column=5, value=beneficiario if beneficiario else 'Não identificado')
-            
-            # ===== FORMATAÇÃO VISUAL (FUNDO LARANJA CLARO) =====
-            for col in range(1, 6):
-                cell = ws.cell(row=row_idx, column=col)
-                cell.fill = PatternFill(start_color="FFE6CC", end_color="FFE6CC", fill_type="solid")
-                cell.alignment = Alignment(vertical="center")
-        
-        # ===== APLICAR BORDAS EM TODA A TABELA =====
-        ultimo_row = len(comprovantes) + 5
-        self._aplicar_estilo_tabela(ws, f"A5:{get_column_letter(5)}{ultimo_row}")
-        
-        # ===== ADICIONAR FILTROS AUTOMÁTICOS =====
-        ws.auto_filter.ref = f"A5:{get_column_letter(5)}{ultimo_row}"
-        
-        # ===== AJUSTAR LARGURAS DAS COLUNAS =====
-        ws.column_dimensions['A'].width = 30  # Arquivo
-        ws.column_dimensions['B'].width = 15  # Data
-        ws.column_dimensions['C'].width = 15  # Valor
-        ws.column_dimensions['D'].width = 18  # Nº Doc
-        ws.column_dimensions['E'].width = 35  # Beneficiário
-        
-        # ===== NOTA DE RODAPÉ =====
-        linha_final = ultimo_row + 2
-        ws[f'A{linha_final}'] = "⚠️ Estes comprovantes podem indicar lançamentos faltando no extrato bancário"
-        ws[f'A{linha_final}'].font = Font(size=9, italic=True, color="FF6600")
-        
-        logger.debug(f"Aba 'Comprovantes Não Conciliados' criada com {len(comprovantes)} linhas")
-
     def _cor_por_confianca(self, confianca: float) -> str:
         """
         Retorna cor HEX baseada no nível de confiança do match.
-        
+
         Regras de cores:
             - confiança ≥ 0.90 (90%): Verde claro (auto-aprovado)
             - 0.60 ≤ confiança < 0.90: Amarelo claro (revisar)
             - confiança < 0.60: Branco (baixa confiança)
-        
+
         Args:
             confianca: Valor de confiança entre 0.0 e 1.0
-        
+
         Returns:
             str: Código HEX da cor (sem #), ex: "C6EFCE"
-        
+
         Example:
             >>> gerador._cor_por_confianca(0.95)
             'C6EFCE'  # Verde

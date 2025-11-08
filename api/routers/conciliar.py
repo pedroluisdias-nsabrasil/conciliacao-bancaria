@@ -4,15 +4,13 @@ Gerencia execução do motor de conciliação
 
 Autor: Pedro Luis
 Data: 06/11/2025
-Versão: 1.1.0 (Corrigida)
+Versão: 1.2.0 (Corrigida - Melhoria #4)
 
-Correções aplicadas:
-- Removido código solto (linhas 216-230)
-- Adicionado persistência em arquivo JSON
-- Funções auxiliares para conversão segura
-- Melhor tracking de lançamentos (hash vs id)
-- Ordenação de arquivos por data de modificação
-- Endpoint de limpeza de resultados
+Correções v1.2.0:
+- Corrigido uso de 'arquivo' ao invés de 'arquivo_origem'
+- Corrigido tracking de comprovantes usando id()
+- Corrigido nome de variável 'comprovantes_usados_ids'
+- Suporte completo a Comprovantes Não Conciliados
 """
 
 from fastapi import APIRouter, HTTPException
@@ -172,9 +170,9 @@ async def executar_conciliacao():
         
         for pdf_path in pdfs:
             try:
-                comp = leitor_ocr.ler_arquivo(str(pdf_path))
-                if comp:
-                    comprovantes.append(comp)
+                comps = leitor_ocr.ler_arquivo(str(pdf_path))
+                if comps:
+                    comprovantes.extend(comps)
                     logger.info(f"  ✅ Processado: {pdf_path.name}")
             except Exception as e:
                 logger.warning(f"  ⚠️  Erro ao processar {pdf_path.name}: {e}")
@@ -200,9 +198,25 @@ async def executar_conciliacao():
             hash_lancamento(m.lancamento) for m in matches
         }
         nao_conciliados = [
-            l for l in lancamentos 
+            l for l in lancamentos
             if hash_lancamento(l) not in lancamentos_com_match
         ]
+        
+        # ===== CALCULAR COMPROVANTES NÃO CONCILIADOS =====
+        # Identificar comprovantes que não foram usados em nenhum match
+        # Usar id() do objeto Python como identificador único
+        comprovantes_usados_ids = {
+            id(m.comprovante) 
+            for m in matches 
+            if m.comprovante
+        }
+        comprovantes_nao_conciliados = [
+            c for c in comprovantes 
+            if id(c) not in comprovantes_usados_ids
+        ]
+
+        logger.info(f"  📊 Comprovantes usados: {len(comprovantes_usados_ids)}")
+        logger.info(f"  📊 Comprovantes não conciliados: {len(comprovantes_nao_conciliados)}")
         
         total_lancamentos = len(lancamentos)
         total_comprovantes = len(comprovantes)
@@ -232,7 +246,9 @@ async def executar_conciliacao():
             "taxa_conciliacao": round(taxa_conciliacao, 1),
             "confianca_media": round(confianca_media * 100, 1),
             "auto_aprovados": auto_aprovados,
-            "nao_conciliados": len(nao_conciliados)
+            "nao_conciliados": len(nao_conciliados),
+            "comprovantes_usados": len(comprovantes_usados_ids),
+            "comprovantes_nao_conciliados": len(comprovantes_nao_conciliados)
         }
         
         # Converter matches para dict
@@ -253,6 +269,7 @@ async def executar_conciliacao():
             # Adicionar comprovante se existir
             if match.comprovante:
                 match_dict["comprovante"] = {
+                    "arquivo": match.comprovante.arquivo,  # ✅ ADICIONAR ESTA LINHA
                     "numero": match.comprovante.numero_documento,
                     "valor": safe_float(match.comprovante.valor),
                     "data": match.comprovante.data.isoformat()
@@ -271,11 +288,23 @@ async def executar_conciliacao():
                 "descricao": lanc.descricao
             })
         
+        # Converter comprovantes não conciliados para dict
+        comprovantes_nao_conciliados_dict = []
+        for comp in comprovantes_nao_conciliados:
+            comprovantes_nao_conciliados_dict.append({
+                "arquivo": comp.arquivo,
+                "valor": safe_float(comp.valor),
+                "data": comp.data.isoformat() if comp.data else None,
+                "numero": comp.numero_documento if hasattr(comp, 'numero_documento') else None,
+                "beneficiario": comp.beneficiario if hasattr(comp, 'beneficiario') else None
+            })
+        
         # Preparar resultado completo
         resultado = {
             "estatisticas": estatisticas,
             "matches": matches_dict,
             "nao_conciliados": nao_conciliados_dict,
+            "comprovantes_nao_conciliados": comprovantes_nao_conciliados_dict,
             "timestamp": datetime.now().isoformat(),
             "arquivo_extrato": extrato_path.name
         }
